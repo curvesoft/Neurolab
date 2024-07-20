@@ -15,7 +15,7 @@ uses  crt, dos,           daff,wavpcm,tulab42,nlrahmen,           grafik,
       objects,                                nlsicht,
                                               nlausw;
 
-const version='9.19';  paramver='8.5'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen und komp84 abschaffen!}
+const version='9.20';  paramver='8.5'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen und komp84 abschaffen!}
       {$IFDEF DPMI}   plattform='DPMI  BP7'; {$ENDIF}
       {$IFDEF MSDOS}  plattform='MSDOS BP7'; {$ENDIF}
       {$IFDEF WIN32} {$IFDEF VER2_4} plattform='Win32 2.4'; {$ELSE} plattform='Win32 2.0'; {$ENDIF}{$ENDIF}
@@ -25,7 +25,7 @@ const version='9.19';  paramver='8.5'; {Beim Erhoehen Diffilter aus nltrigg raus
       {$ifdef fpc} nlbext='.nlx'; {$else} nlbext='.nlb'; {$endif}
       id:string[8]='Neurl'+paramver;
       sichername:string='NEUROLAB';
-      {$IFDEF fpc} pufgroesse=2147483647; {$ELSE} pufgroesse=32768; {$ENDIF}
+      {$IFDEF fpc} pufgroesse=65535; {$ELSE} pufgroesse=32768; {$ENDIF}
 
 var   exitsave:pointer;
       named:dirstr; namen:namestr; namee:extstr;
@@ -85,9 +85,9 @@ procedure filteruebersicht;
 begin
 writeln('Filters:');
 writeln(     ' y : y-Resolution   a : Amplification  - : Invert Sign    s : Spike Filter',
-        lfcr,' j : Points (TL)    o : ñ Offset       v : Absolute Value g : Gliding Av.    ',
+        lfcr,' j : Points (TL)    o : +/- Offset     v : Absolute Value g : Gliding Av.    ',
         lfcr,' c : Clip           h : High-Pass      2 : Square         z : Gliding Length ',
-        lfcr,' t : ñ Time Shift   l : Low-Pass       r : Reciprocal V.  f : Frequency (TL) ',
+        lfcr,' t : +/- Time Shift l : Low-Pass       r : Reciprocal V.  f : Frequency (TL) ',
         lfcr,' # : Count (TL)     d : Differentiate  + : Summation      i : Interval (TL)',
         lfcr,' p : Polygon (TL)   w : Integration    e : arcsin         x : Time Diff.(TL)',
         lfcr,' m : Max - Min      n : Gl. Integr.    k : arccos         b : Phase (TL)',
