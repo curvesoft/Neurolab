@@ -250,7 +250,6 @@ end;
 procedure grafikdarstellung.aufbauen (l1,l2:word; var fina,fike:string80;
                                       fian:byte);
 var   taste:char;
-      i:grossint;
 begin
 filename:=fina; filekennung:=fike; fileanzahl:=fian;
 line1:=l1; line2:=l2;
@@ -324,7 +323,7 @@ end;
 
 procedure grafikxy.bild;
 const urand=26; orand=32;
-var   i,j,m,xz,tzaehler:longint;
+var   m,xz,tzaehler:longint;
       nr,znr,x0,y0,xp,yp:word;
       faktorx,faktory:extended;
       wandert:listenzeiger;

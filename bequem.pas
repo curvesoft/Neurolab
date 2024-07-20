@@ -191,7 +191,7 @@ if laerm then begin
 end;
 
 procedure fehler (text:string80);
-var  textattralt:byte;
+{$ifndef windows} var  textattralt:byte; {$endif}
 begin
 {$ifndef windows} textattralt:=textattr; textcolor(lightred+blink); {$endif}
 write('--> ');

@@ -97,8 +97,7 @@ end;
 
 procedure filterliste.weiterzeigen;
 label  voll;
-var    i:byte;
-       windminalt,windmaxalt:word;
+var    windminalt,windmaxalt:word;
        wy,wx:byte;
 begin
 wy:=wherey; wx:=wherex;
