@@ -1,4 +1,5 @@
-{ Borland-Pascal 7.0 / FPC 2.0 }
+{ Borland-Pascal 7.0 / FPC 2.4 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit  nlgrafik;
 
@@ -10,7 +11,7 @@ unit  nlgrafik;
 
 interface
 
-uses  crt,                graph,              daff,wavpcm,tulab42, nlrahmen,
+uses  crt,                 graph,             daff,wavpcm,tulab42, nlrahmen,
       dos,                grafik,             tlfilter,            nltrigg,
       bequem,             plotter,            tlfiles;
 
@@ -18,7 +19,7 @@ const kleinschr='SI0.14,0.22;';  relativschr='SR1,2.6;';
       ganz=maxsample-minsample;
       lrand=50;
 
-      {$ifdef fpc} maxanzahl=(1 shl 23) div sizeof(wert) -2; {$else} maxanzahl=(1 shl 16) div sizeof(wert) -2; {$endif}
+      {$ifdef fpc} maxanzahl=(1 shl 27) div sizeof(wert) -2; {$else} maxanzahl=(1 shl 16) div sizeof(wert) -2; {$endif}
       maxfeld=6000;
 
 type  mittelfeld  = packed array[0..maxanzahl] of wert;
@@ -159,8 +160,7 @@ implementation
 type  skalafeld=array[1..10] of messwert;
       punkte=record p1x,p1y,p2x,p2y:word end;
 
-const tstellenmuster:set of 0..15=[0,4,8,12]; strichfarbe=white;
-      bildfarbe=green;
+const tstellenmuster:set of 0..15=[0,4,8,12];
       ende:boolean=false;
 
       p:array[1..5] of punkte=((p1x:3000; p1y:3000; p2x:6000; p2y:5000),
@@ -170,6 +170,7 @@ const tstellenmuster:set of 0..15=[0,4,8,12]; strichfarbe=white;
                                (p1x:1150; p1y:380;  p2x:9750; p2y:6380));
 
 var   tstellenpattern:word absolute tstellenmuster;
+      strichfarbe, bildfarbe:longint;
 
 function kon (hoehe:wert; k:byte):wert;
 begin
@@ -247,7 +248,6 @@ end;
 procedure grafikdarstellung.aufbauen (l1,l2:word; var fina,fike:string80;
                                       fian:byte);
 var   taste:char;
-      i:grossint;
 begin
 filename:=fina; filekennung:=fike; fileanzahl:=fian;
 line1:=l1; line2:=l2;
@@ -321,7 +321,7 @@ end;
 
 procedure grafikxy.bild;
 const urand=26; orand=32;
-var   i,j,m,xz,tzaehler:longint;
+var   m,xz,tzaehler:longint;
       nr,znr,x0,y0,xp,yp:word;
       faktorx,faktory:extended;
       wandert:listenzeiger;
@@ -405,7 +405,7 @@ for nr:=1 to filenr do with liste[nr] do
    if belegungsliste[x].gepunktet and belegungsliste[y].gepunktet then exit;
    if belegungsliste[x].gepunktet then xyl:=x else xyl:=y;
    oeffnen(nr);
-   td:=tliste[belegungsliste[xyl].gepunktettl]^.fil[filenr];
+   td:=tliste[belegungsliste[xyl].gepunktettl]^.fil[nr];
    for tzaehler:=1 to td.automn do begin
       xp:=x0+round(kon(dat(zwi(td.autom^[tzaehler]),x),x)*faktorx);
       yp:=y0-round(kon(dat(zwi(td.autom^[tzaehler]),y),y)*faktory);
@@ -446,7 +446,7 @@ for nr:=1 to filenr do with liste[nr] do begin
    if belegungsliste[x].gepunktet and belegungsliste[y].gepunktet then exit;
    if belegungsliste[x].gepunktet then xyl:=x else xyl:=y;
    oeffnen(nr);
-   td:=tliste[belegungsliste[xyl].gepunktettl]^.fil[filenr];
+   td:=tliste[belegungsliste[xyl].gepunktettl]^.fil[nr];
    for tzaehler:=1 to td.automn do
       write(plt,plpa(kon(dat(zwi(td.autom^[tzaehler]),x),x),
             kon(dat(zwi(td.autom^[tzaehler]),y),y)),plkr);
@@ -629,7 +629,7 @@ write(plt,pllb(' Bins          :'+wort(diffn)+' ('+extwort(extspannung(klasse,xk
 end;
 
 procedure grafikamplitude.filewrite (var outfile:text);
-var i:word;
+var i:longint;
     faktor:extended;
 begin
 faktor:=(maxsamp-minsamp)/diffn;
@@ -795,7 +795,7 @@ var   maxx,maxy:longint;
       zw:extended;
 begin
 maxx:=getmaxx; maxy:=getmaxy;
-richtung:=vow;
+{richtung:=vow;}
 cleardevice;
 grafikdarstellung.bild;
 grafikkanaele.bild;
@@ -927,7 +927,7 @@ var   wandert:listenzeiger; pwandert:punktzeiger;
       tpo,tpol,tpor,dum:exword;
 begin
 maxx:=getmaxx; maxy:=getmaxy;
-richtung:=vow;
+{richtung:=vow;}
 datanf:=anfang;
 cleardevice;
 grafikkanaele.bild;
@@ -990,7 +990,7 @@ line(strich,oben,strich,maxy-11);
 if strich1da then line(strich1,oben,strich1,maxy-11);
 settextjustify(lefttext,centertext);
 setcolor(getmaxcolor);
-if spannstatus then richtung:=mit;
+{if spannstatus then richtung:=mit;}
 zei1a:=''; zei2a:=''; zei3a:='';  zei4a:='';
 end;
 
@@ -1223,16 +1223,16 @@ with liste[aktfile] do
                     end;
                  end;
        {Ret} #13:begin anfang:=strichstelle-dauer/2; bild end;
-       {Esc} #27:begin closegraph; schliesse; richtung:=vow; exit end;
+       {Esc} #27:begin closegraph; schliesse; {richtung:=vow;} exit end;
              ' ':begin
                  spannstatus:=not spannstatus;
-                 if spannstatus then richtung:=mit end;
+                 {if spannstatus then richtung:=mit} end;
              end;
       while keypressed do tb:=readkey;
    until ende;
 closegraph;
 schliesse;
-richtung:=vow;
+{richtung:=vow;}
 ende:=false;
 end;
 
@@ -1277,7 +1277,7 @@ write(plt,pllb('T.-P.: '+wort(tpgesamt)));
 end;
 
 procedure grafikmittel.filewrite (var outfile:text);
-var i,k:word;
+var i,k:longint;
 begin
 for i:=0 to rdauer do begin
    write(outfile,extzeit(i+anfang):12:3);
@@ -1459,4 +1459,6 @@ klasse:=dauerphase/dfn;
 inherited aufbauen(rtl,dfn,ybe);
 end;
 
+begin
+strichfarbe:=white; bildfarbe:=green;
 end.
