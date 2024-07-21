@@ -16,7 +16,7 @@ uses  crt, dos,
       objects,                                nlsicht,
                                               nlausw;
 
-const version='9.04';  paramver='8.4'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen!}
+const version='10.00'; paramver='8.4'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen!}
       {$IFDEF DPMI}   plattform='DPMI '; {$ENDIF}
       {$IFDEF MSDOS}  plattform='MSDOS'; {$ENDIF}
       {$IFDEF WIN32}  plattform='Win32'; {$ENDIF}
