@@ -1,4 +1,5 @@
 { Borland-Pascal 7.0 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit plotter;
 

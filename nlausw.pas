@@ -1,4 +1,5 @@
 { Borland-Pascal 7.0 / FPC 2.4 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit nlausw;
 

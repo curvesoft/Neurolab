@@ -1,4 +1,8 @@
+
+{$R *.res}
+
 { Borland-Pascal 7.0 / FPC 2.4 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 program neurolab;
 {Authors: Berthold Hedwig & Marko Knepper}

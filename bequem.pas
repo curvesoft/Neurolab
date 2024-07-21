@@ -1,8 +1,8 @@
 { Borland-Pascal 7.0 / FPC 2.4 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit  bequem;
 
-{$ifdef fpc} {$endif}
 {$IFDEF MSDOS}
 {$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X+}
 {$ELSE}
