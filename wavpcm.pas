@@ -1,4 +1,5 @@
-{ Borland-Pascal 7.0 / FPC 2.0 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit  wavpcm;
 
@@ -14,10 +15,9 @@ uses  crt, dos, objects,
       bequem, daff;
 
 procedure kopf (name:fnamestr; var kodaten:kopfdaten);
-(*
 procedure kopfplatzschreiben (name:string80);
 procedure kopfschreiben (name:string80; kodaten:kopfdaten);
-*)
+
 
 implementation
 
@@ -96,41 +96,49 @@ if ko.riff<>'RIFF' then begin
    end;
 end;
 
-(* evtl. weglassen:
 procedure kopfplatzschreiben (name:string80);
 var   s:file;
       ko:header;
+      ch:chunk;
       l:word;
 begin
-fillchar(ko,sizeof(ko),#0);
+fillchar(ko,sizeof(ko),#0); fillchar(ch,sizeof(ch),#0);
 assign(s,name);
 rewrite(s,1);
-blockwrite(s,ko,512{ <- ausrechnen});
+blockwrite(s,ko,sizeof(ko));
+blockwrite(s,ch,sizeof(ch));
 close(s);
 end;
 
 procedure kopfschreiben (name:string80; kodaten:kopfdaten);
 var   s:file;
       ko:header;
-      i:longint;
-      a,b,c,d:word;
+      ch:chunk;
 begin
 fillchar(ko,sizeof(ko),#0);
 assign(s,name);
 reset(s,1);
 with ko do begin
    riff:='RIFF';
-   len:=0; { <- berechnen}
+   len:=filesize(s)-8;
    wave:='WAVE';
    ckid:='fmt ';
    nchunksize:=16;
    wformattag:=1;
    nchannels:=kodaten.nkan;
-   {weiteres}
+   nsamplespersec:=round(kodaten.freq);
+   navgbytespersec:=round(kodaten.freq*kodaten.nkan*2);
+   nblockalign:=kodaten.nkan*2;
+   nbitspersample:=16;
+   end;
+with ch do begin
+   ckid:='data';
+   nchunksize:=filesize(s)-sizeof(ko)-sizeof(ch);
    end;
 blockwrite(s,ko,sizeof(ko));
+blockwrite(s,ch,sizeof(ch));
 close(s);
 end;
-*)
+
 
 end.
