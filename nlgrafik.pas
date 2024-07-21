@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 unit  nlgrafik;
 
@@ -18,15 +18,15 @@ const kleinschr='SI0.14,0.22;';  relativschr='SR1,2.6;';
       ganz=maxsample-minsample;
       lrand=50;
 
-      maxanzahl=(1 shl 16) div sizeof(wert) -2;
+      {$ifdef fpc} maxanzahl=(1 shl 23) div sizeof(wert) -2; {$else} maxanzahl=(1 shl 16) div sizeof(wert) -2; {$endif}
       maxfeld=6000;
 
-type  mittelfeld  = array[0..maxanzahl] of wert;
+type  mittelfeld  = packed array[0..maxanzahl] of wert;
       mittelliste = array[0..maxkanal] of ^mittelfeld;
-      bildfeld    = array[1..maxfeld] of extended;
+      bildfeld    = array[0..maxfeld+1] of extended;
 
       grafikdarstellung=object    {Allgemeine Grafiken}
-         filename,filekennung:string80; fileanzahl:byte;
+         filename,filekennung,kommentar:string80; fileanzahl:byte;
          line1,line2:word;
          abbruch:boolean;
          procedure berechnen; virtual;
@@ -59,7 +59,7 @@ type  mittelfeld  = array[0..maxanzahl] of wert;
          procedure aufbauen (xk:byte; rtl:char; dfn:word; ybe:extended; mins,maxs:sample);
          end;
 
-      yliste=array[1..maxkanal+1] of word;
+      yliste=array[1..maxkanal+1] of grossint;
       grafikkanaele=object (grafikdarstellung)
          anfang,dauer:messwert;
          kanaele:kanalmenge;
@@ -82,15 +82,15 @@ type  mittelfeld  = array[0..maxanzahl] of wert;
          aktfile:byte;
          ablenkung:single;
          datanf:messwert;
-         strichstelle,strichst1:messwert;  strich,strich1:word;
+         strichstelle,strichst1:messwert;  strich,strich1:grossint;
          status:statustyp;
          spalte1,spalte2:word;
          spannstatus,strich1da:boolean;
          zei1a,zei2a,zei3a,zei4a:string20;
-         function stellex (stelle:messwert):longint;
-         function xstelle (x:integer):messwert;
+         function stellex (stelle:messwert):grossint;
+         function xstelle (x:grossint):messwert;
          procedure bild; virtual;
-         procedure linie (x1,x2:word);
+         procedure linie (x1,x2:grossint);
          procedure plot (gr:byte); virtual;
          constructor aufbauen (afi:byte; var kane:kanalmenge;
                                anf:messwert; abl:single; men:menue);
@@ -107,15 +107,15 @@ type  mittelfeld  = array[0..maxanzahl] of wert;
 
       grafikmittel=object (grafikkurve) {Grafik vom Averagen}
          mittel:mittelliste;
-         tpgesamt:longint;
+         tpgesamt:grossint;
          tl:char;
-         rdauer:longint;
+         rdauer:grossint;
          function daten (stelle:messwert; kanal:byte):sample; virtual;
          procedure bild; virtual;
          procedure plot (gr:byte); virtual;
          procedure filewrite (var outfile:text); virtual;
          procedure aufbauen(var kan:kanalmenge; anf,dau:messwert;
-                            trl:char; trp:longint);
+                            trl:char; trp:grossint);
          end;
 
       grafikintervallroh=object (grafikdarstellung) {Intervalldaten-Grafik}
@@ -141,7 +141,7 @@ type  mittelfeld  = array[0..maxanzahl] of wert;
       grafikphasenintervall=object (grafikintervallroh) {... mit Phasenachse}
          anfphase,dauerphase:extended;
          klasse:extended;
-         diffnganz:longint;
+         diffnganz:grossint;
          procedure bild; virtual;
          procedure plot (gr:byte); virtual;
          procedure filewrite (var outfile:text); virtual;
@@ -231,7 +231,8 @@ repeat
    rewrite(plt);
 until not lesefehler;
 writeln;
-ende:=upcase(readchar('Return to menue after plot? (Y/N)','N'))='Y';
+ende:=upcase(readchar('Return to menue after plot? (Y/N)','Y'))='Y';
+kommentar:=readstring('Plot comment','');
 if upcase(readchar('Start plot? (Y/N)','Y'))='Y' then begin
    writeln(lfcr,'>> Abort: Escape <<');
    case plotformat of
@@ -246,7 +247,7 @@ end;
 procedure grafikdarstellung.aufbauen (l1,l2:word; var fina,fike:string80;
                                       fian:byte);
 var   taste:char;
-      i:longint;
+      i:grossint;
 begin
 filename:=fina; filekennung:=fike; fileanzahl:=fian;
 line1:=l1; line2:=l2;
@@ -282,7 +283,7 @@ type skalasorte=(zeitskala,phasenskala);
 procedure skala (const anfang,dauer:extended; var anz:byte;
                  var werte:skalafeld; sorte:skalasorte);
 const anteil=0.85;
-var   n,i,step:byte; n10,zeitpa,zeitpe:longint;
+var   n,i,step:byte; n10,zeitpa,zeitpe:grossint;
       fre:extended;
 begin
 case sorte of
@@ -466,8 +467,8 @@ write(plt,'TL0,1.3;',plpa(minsample,minsample),plyt,plxt);
 write(plt,'TL0,0.6;');
 for j:=1 to 3 do write(plt,plpa(minsample,minsample+j*ganz/4),plyt);
 write(plt,'TL0,1.3;',plpa(minsample,maxsample),plyt);
-write(plt,'CP0,2;',kleinschr,pllb(filekennung),'CP;CP0,2;',
-          pllb(filename),relativschr);
+write(plt,kleinschr,'CP0,3;',pllb(filename),'CP;',pllb(filekennung),'CP;',
+             pllb(kommentar),relativschr);
 write(plt,'TL0,0.6;');
 for j:=1 to 3 do write(plt,plpa(minsample+j*ganz/4,minsample),plxt);
 write(plt,'TL0,1.3;',plpa(maxsample,minsample),plxt);
@@ -517,7 +518,7 @@ end;
 
 { bildbalken }
 
-procedure bildbalken (const lrand:longint; var xbreite:extended;
+procedure bildbalken (const lrand:grossint; var xbreite:extended;
                       const klasse:extended; var breite,diffn:word);
 begin
 breite:=(getmaxx-lrand-2) div diffn;
@@ -609,8 +610,8 @@ for i:=1 to diffn-1 do write(plt,plpa(i,diff^[i]),plpa(i,diff^[i+1]));
 write(plt,plpa(diffn,diff^[diffn]),plpa(diffn,0),plpu);
 write(plt,relativschr,plpa(0,ybereich),'CP-5.5,-0.75;',
           pllb(buendig(extwort(ybereich,5,3))));
-write(plt,plpa(0,ybereich),'CP0,2;',kleinschr,pllb(filekennung),'CP;CP0,2;',
-          pllb(filename),relativschr);
+write(plt,plpa(0,ybereich),kleinschr,'CP0,3;',pllb(filename),'CP;',pllb(filekennung),'CP;',
+             pllb(kommentar),relativschr);
 write(plt,plpa(0,ybereich),'TL0,1.3',plyt,plpd,plpa(0,0),plyt,
           plpd,plpa(diffn,0),plpu);
 write(plt,plpa(0,0),plxt,'CP-4.33,-1',
@@ -631,9 +632,9 @@ procedure grafikamplitude.filewrite (var outfile:text);
 var i:word;
     faktor:extended;
 begin
-faktor:=(maxsample-minsample)/diffn;
+faktor:=(maxsamp-minsamp)/diffn;
 for i:=1 to diffn do writeln(outfile,
-    extspannung(minsample+(i-0.5)*faktor,xkanal):12:3,diff^[i]:15:9);
+    extspannung(rekon(minsamp+(i-0.5)*faktor,xkanal),xkanal):12:3,diff^[i]:15:9);
 end;
 
 { grafikkanaele }
@@ -642,7 +643,7 @@ procedure grafikkanaele.bild;
 var   i,x,buch,yn:longint;
       anzahl:byte; werte:skalafeld;
       y:yliste;
-      maxx,maxy:integer;
+      maxx,maxy:grossint;
 begin
 maxx:=getmaxx; maxy:=getmaxy;
 setcolor(min(bildfarbe,getmaxcolor));
@@ -699,7 +700,7 @@ end;
 procedure grafikkanaele.plot (gr:byte);
 var   i,j:longint;
       anzahl:byte;          werte:skalafeld;
-      rdauer:longint;
+      rdauer:grossint;
       lrand:extended;
       fleinheit:einheittyp;
 begin
@@ -723,8 +724,8 @@ with kanaele do begin
       for j:=1 to 3 do write(plt,plpa(0,ganz*(kn-i)+j*ganz/4),plyt);
       write(plt,'TL0,1.3;',plpa(0,ganz*(kn-i+1)),plyt);
       end;
-   write(plt,'CP0,2;',kleinschr,pllb(filekennung),'CP;CP0,2;',
-             pllb(filename),relativschr);
+   write(plt,kleinschr,'CP0,3;',pllb(filename),'CP;',pllb(filekennung),'CP;',
+             pllb(kommentar),relativschr);
    write(plt,plpu,plpa(0,ganz*kn),plpd,plpa(0,0),plpa(rdauer,0),plpu,
              'CP-6,-1;',pllb('t [ms]'),'TL-1,0;');
    skala(anfang,rdauer,anzahl,werte,zeitskala);
@@ -734,9 +735,6 @@ with kanaele do begin
    write(plt,'DI0,1;');
    for i:=kn downto 1 do write(plt,plpu,plpa(lrand,ganz*(kn-i)),
         'CP0,0.5;',pllb(schriftliste[k[i]]));
-   write(plt,kleinschr,'DI1,0;',plpa(rdauer,ganz*kn),'CP-6,2;');
-   write(plt,pllb('Start: '+extwort(extzeit(anfang),1,3)+' ms'),'CP;CP-6,0;');
-   write(plt,pllb('End  : '+extwort(extzeit(anfang+dauer),1,3)+' ms'));
    end;
 end;
 
@@ -765,11 +763,14 @@ end;
 
 procedure grafikkurve.plot (gr:byte);
 var   i,j:longint;
-      rdauer:longint;
+      rdauer:grossint;
 begin
 grafikkanaele.plot(gr);
+rdauer:=round(dauer);
+write(plt,kleinschr,'DI1,0;',plpa(rdauer,ganz*kanaele.kn),'CP-6,2;');
+write(plt,pllb('Start: '+extwort(extzeit(anfang),1,3)+' ms'),'CP;CP-6,0;');
+write(plt,pllb('End  : '+extwort(extzeit(anfang+dauer),1,3)+' ms'));
 with kanaele do begin
-   rdauer:=round(dauer);
    for i:=kn downto 1 do begin
      write(plt,plpa(0,ganz*(kn-i+0.5)+kon(daten(0,k[i]),k[i])),
                plpd);
@@ -785,11 +786,11 @@ end;
 { grafiksuperposition }
 
 procedure grafiksuperposition.bild;
-var   maxx,maxy:integer;
+var   maxx,maxy:longint;
       i,j,l,m,x:longint;
       y:yliste;
       gepunktetmenge:set of 0..31;
-      tpo,tpol,tpor,dum:word;
+      tpo,tpol,tpor,dum:exword;
       yn:word;
       zw:extended;
 begin
@@ -843,13 +844,16 @@ end;
 
 procedure grafiksuperposition.plot (gr:byte);
 var   i,j,m,l:longint;
-      rdauer:longint;
-      tpo,tpol,tpor,dum:word;
+      rdauer:grossint;
+      tpo,tpol,tpor,dum:exword;
       zw:extended;
 begin
 grafikkanaele.plot(gr);
+rdauer:=round(dauer);
+write(plt,kleinschr,'DI1,0;',plpa(rdauer,ganz*kanaele.kn),'CP-6,2;');
+write(plt,pllb('Start: '+extwort(extzeit(anfang),1,3)+' ms'),'CP;CP-6,0;');
+write(plt,pllb('End  : '+extwort(extzeit(anfang+dauer),1,3)+' ms'));
 with kanaele do begin
-   rdauer:=round(dauer);
    for l:=1 to filenr do with tliste[tl]^.fil[l] do begin
       oeffnen(l);
       for m:=1 to automn do begin
@@ -894,19 +898,19 @@ end;
 
 { grafikdaten }
 
-function grafikdaten.stellex (stelle:messwert):longint;
+function grafikdaten.stellex (stelle:messwert):grossint;
 var   zwischen:extended;
 begin
-zwischen:=maxe(mine((stelle-datanf)/stauchung+lrand+1,maxint),0);
+zwischen:=maxe(mine((stelle-datanf)/stauchung+lrand+1,maxlongint),-maxlongint);
 stellex:=round(zwischen);
 end;
 
-function grafikdaten.xstelle (x:integer):messwert;
+function grafikdaten.xstelle (x:grossint):messwert;
 begin
 xstelle:=datanf+(x-lrand-1)*stauchung;
 end;
 
-procedure grafikdaten.linie (x1,x2:word);
+procedure grafikdaten.linie (x1,x2:grossint);
 var i:word;
 begin
 setlinestyle(solidln,0,normwidth);
@@ -916,11 +920,11 @@ end;
 procedure grafikdaten.bild;
 var   wandert:listenzeiger; pwandert:punktzeiger;
       di:dirstr; na:namestr; ex:extstr;
-      maxx,maxy:integer;
+      maxx,maxy:grossint;
       i,j,x,yn:longint;
       y:yliste;
       gepunktetmenge:set of 0..31;
-      tpo,tpol,tpor,dum:word;
+      tpo,tpol,tpor,dum:exword;
 begin
 maxx:=getmaxx; maxy:=getmaxy;
 richtung:=vow;
@@ -992,12 +996,16 @@ end;
 
 procedure grafikdaten.plot (gr:byte);
 var   i,j:longint;
-      rdauer:longint;
-      tpo,tpol,tpor,dum:word;
+      rdauer:grossint;
+      tpo,tpol,tpor,dum:exword;
 begin
 grafikkanaele.plot(gr);
+rdauer:=round(dauer);
+write(plt,kleinschr,'DI1,0;',plpa(rdauer,ganz*kanaele.kn),'CP-6,3;');
+write(plt,pllb('Start: '+extwort(extzeit(anfang),1,3)+' ms'),'CP;CP-6,0;');
+{write(plt,pllb('End  : '+extwort(extzeit(anfang+dauer),1,3)+' ms'));}
+write(plt,pllb('Speed on Screen:'),'CP;CP-6,0;',pllb(extwort(ablenkung,4,2)+' mm/s'));
 with kanaele do begin
-   rdauer:=round(dauer);
    for i:=kn downto 1 do if not belegungsliste[k[i]].gepunktet then begin
      write(plt,plpa(0,ganz*(kn-i+0.5)+kon(dat(zwi(datanf),k[i]),k[i])),
                plpd);
@@ -1027,13 +1035,13 @@ var   gr:byte;
       tb:char;
       i,kannr:byte;
       extvar:extended;
-   procedure schritt (var strich:word; auf:word);
+   procedure schritt (var strich:grossint; auf:grossint);
    begin
    setlinestyle(dashedln,0,normwidth);
    setcolor(min(strichfarbe,getmaxcolor));
    line(strich,oben,strich,getmaxy-11);
    strich:=auf;
-   line(strich,oben,strich,getmaxy-11);
+   if (strich>=0) and (getmaxx>=strich) then line(strich,oben,strich,getmaxy-11);
    setcolor(getmaxcolor);
    end;
 begin
@@ -1187,6 +1195,33 @@ with liste[aktfile] do
                          end;
                     end;
              'P':plotstart;
+             'B':begin
+                 schritt(strich,strich-1);
+                 strichstelle:=xstelle(strich);
+                 wandert:=block^;
+                 if wandert^.von>strichstelle then schritt(strich,stellex(0))
+                                              else begin
+                    while wandert^.next^.von<strichstelle do wandert:=wandert^.next;
+                    schritt(strich,stellex(wandert^.von));
+                    end;
+                 strichstelle:=xstelle(strich);
+                 if anfang>=strichstelle then begin
+                    anfang:=strichstelle-dauer/4;
+                    bild;
+                    end;
+                 end;
+             'F':begin
+                 schritt(strich,strich+1);
+                 strichstelle:=xstelle(strich);
+                 wandert:=block^;
+                 while wandert^.von<strichstelle do wandert:=wandert^.next;
+                 if wandert^.next<>nil then schritt(strich,stellex(wandert^.von)) else schritt(strich,stellex(laenge)-1);
+                 strichstelle:=xstelle(strich);
+                 if strichstelle>=anfang+dauer then begin
+                    if wandert^.next=nil then anfang:=laenge-dauer else anfang:=strichstelle-dauer/4;
+                    bild;
+                    end;
+                 end;
        {Ret} #13:begin anfang:=strichstelle-dauer/2; bild end;
        {Esc} #27:begin closegraph; schliesse; richtung:=vow; exit end;
              ' ':begin
@@ -1204,13 +1239,18 @@ end;
 { grafikmittel }
 
 procedure grafikmittel.aufbauen(var kan:kanalmenge; anf,dau:messwert;
-                                trl:char; trp:longint);
+                                trl:char; trp:grossint);
+var i:longint;
 begin
 kanaele:=kan; anfang:=anf; dauer:=dau;
 tl:=trl; tpgesamt:=trp;
 rdauer:=round(dauer);
+{$ifdef fpc}
+for i:=0 to maxkanal do if i in kan.dabei then begin new(mittel[i]); fillchar(mittel[i]^,sizeof(mittel[i]^),0) end;
+{$endif}
 with liste[tliste[tl]^.erstfile] do
    grafikdarstellung.aufbauen(14,24,name,ko.kennung,tliste[tl]^.fileanz);
+{$ifdef fpc} for i:=0 to maxkanal do if i in kan.dabei then dispose(mittel[i]); {$endif}
 end;
 
 
@@ -1295,8 +1335,8 @@ for i:=1 to diffn-1 do write(plt,plpa(i,diff^[i]),plpa(i,diff^[i+1]));
 write(plt,plpa(diffn,diff^[diffn]),plpa(diffn,0),plpu);
 write(plt,relativschr,plpa(0,ybereich),'CP-5.5,-0.75;',
           pllb(buendig(extwort(ybereich,5,3))));
-write(plt,plpa(0,ybereich),'CP0,2;',kleinschr,pllb(filekennung),'CP;CP0,2;',
-          pllb(filename),relativschr);
+write(plt,plpa(0,ybereich),kleinschr,'CP0,3;',pllb(filename),'CP;',pllb(filekennung),'CP;',
+             pllb(kommentar),relativschr);
 write(plt,plpa(0,ybereich),'TL0,1.3',plyt,plpd,plpa(0,0),plyt,
           plpd,plpa(diffn,0),plpu);
 write(plt,plpa(0,0),'CP-1.5,0.25;',pllb('0'));

@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 unit  wavpcm;
 
@@ -22,7 +22,7 @@ procedure kopfschreiben (name:string80; kodaten:kopfdaten);
 
 implementation
 
-type  header=record
+type  header=packed record
         riff:array[1..4] of char;
         len:longint;
         wave:array[1..4] of char;
@@ -35,13 +35,12 @@ type  header=record
         nblockalign:word;
         nbitspersample:word;
         end;
-      chunk=record
+      chunk=packed record
         ckid:array[1..4] of char;
         nchunksize:longint;
         end;
 
 procedure kopf (name:fnamestr; var kodaten:kopfdaten);
-const eins:longint=1;
 var   ko:header; sampbytes:word;
       stamp:longint; dt:datetime;
       ch:chunk;

@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 unit  tulab42;
 
@@ -10,8 +10,7 @@ unit  tulab42;
 
 interface
 
-uses  {$ifdef windows} wincrt, windos, dostowin,
-      {$else} crt, dos, objects, {$endif}
+uses  crt, dos, objects,
       bequem, daff, wavpcm;
 
 procedure kopf (const name:fnamestr; var kodaten:kopfdaten);
@@ -20,10 +19,10 @@ procedure kopfschreiben (name:string80; kodaten:kopfdaten);
 
 implementation
 
-type  gainfeld=array[0..15] of byte;
-      nlgainfeld=array[0..15] of extended;
-      namenfeld=array[0..15] of string[10];
-      header=record
+type  gainfeld=packed array[0..15] of byte;
+      nlgainfeld=packed array[0..15] of extended;
+      namenfeld=packed array[0..15] of string[10];
+      header=packed record
         id:string[8];                      nchan:byte;
         gain:gainfeld;                     names:namenfeld;
         frqkts:string[10];                 frqsts:string[10];
@@ -69,7 +68,7 @@ if ko.id<>'TurboLab' then begin
          if ko.nl='NeuroLab' then faktor1:=ko.nlgain[i]
                              else faktor1:=10/ko.gain[i]/maxsample;
          faktor2:=1;
-         if ko.nl='NeuroLab' then einheit:='E'
+         if ko.nl='NeuroLab' then einheit:='U'
                              else einheit:='V';
          offs:=i*2;
          dattyp:=6;
@@ -80,7 +79,7 @@ if ko.id<>'TurboLab' then begin
          name:=' - ';
          faktor1:=1;
          faktor2:=1;
-         einheit:='E';
+         einheit:='U';
          offs:=0;
          dattyp:=0;
          end;
@@ -93,7 +92,6 @@ end;
 procedure kopfplatzschreiben (name:string80);
 var   s:file;
       ko:header;
-      l:word;
 begin
 fillchar(ko,sizeof(ko),#0);
 assign(s,name);

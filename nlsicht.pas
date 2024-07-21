@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 unit nlsicht;
 
@@ -27,7 +27,7 @@ const abl:single=200;
       anfang:messwert=0;
 var   sichtgrafik:grafikdaten;
       sinvar:single;
-      i:longint;
+      i:grossint;
 begin
 ueberschrift(false,'View Data','Info',farbe2);
 fileliste;
@@ -51,11 +51,12 @@ end;
 
 procedure sichtmenue (aktfile:byte);
 
+{
 procedure autoblock;
 var   ta,tb:char;
       wandert:listenzeiger;
       i:longint;
-      dummy,re:word;
+      dummy,re:exword;
 begin
 ueberschrift(false,'Block Creation','Info',farbe4);
 triggeruebersicht;
@@ -82,16 +83,17 @@ with liste[aktfile], tliste[ta]^.fil[aktfile] do begin
       end;
    end;
 end;
+}
 
 begin
 ueberschrift(false,'View Data','Menu',farbe3);
 gotoxy(1,6);
 writeln(lfcr,'  b...Create Blocks from Trigger Lists',
-        lfcr,'  a...Abort');
+        lfcr,'  q...Quit');
 gotoxy(1,19); zwischen('Dialogue',farbe3); writeln;
-case upcase(readcharim('Menu point','a')) of
-   'B':autoblock;
-   'A':exit;
+case upcase(readcharim('Menu point','q')) of
+   'B':nltrigg.autoblock(aktfile);
+   'Q':exit;
    end;
 end;
 

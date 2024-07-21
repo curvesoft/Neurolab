@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 unit nltrigg;
 
@@ -15,10 +15,12 @@ uses  crt, dos,           daff,wavpcm,tulab42,
       bequem,             tlfiles,
       nlrahmen;
 
-const triggermax=65520 div sizeof(messwert) -2;
+const {$ifdef fpc} triggermax=1 shl 22 -1; {$else} triggermax=65520 div sizeof(messwert) -12; {$endif}
       listmax='H';
 
 type  { Triggerlisten }
+
+      {$ifdef fpc} grossintcomp=int64; {$else} grossintcomp=comp; {$endif}
 
       triggerliste=array[0..triggermax+1] of messwert;
       triggerdaten=object
@@ -29,7 +31,7 @@ type  { Triggerlisten }
          procedure store (var s:tbufstream);
          procedure load (var s:tbufstream);
          procedure frei;
-         procedure such (links,rechts:word; nach:messwert; var li,re:word);
+         procedure such (links,rechts:exword; nach:messwert; var li,re:exword);
          end;
 
       filemenge=set of 1..maxfiles;
@@ -43,7 +45,7 @@ type  { Triggerlisten }
          tr:byte;
          function fileanz:byte;
          function erstfile:byte;
-         function triggsum:word;
+         function triggsum:exword;
          procedure neu;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
@@ -69,9 +71,11 @@ type  { Triggerlisten }
       aequidistant=object (triggerung)
          anfa,dist:messwert;
          constructor neu;
-         procedure triggern (dabei:filemenge); virtual;
+{         procedure triggern (dabei:filemenge); virtual;}
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
+       private
+         procedure blocktriggern (von,bis:messwert); virtual;
          end;
 
       schwelle=object (triggerung)
@@ -130,10 +134,22 @@ type  { Triggerlisten }
        private
          procedure blocktriggern (von,bis:messwert); virtual;
          end;
+      eintrittzg=^eintritt;
+      eintritt=object (fenster)
+         constructor neu;
+       private
+         procedure blocktriggern (von,bis:messwert); virtual;
+         end;
+      austrittzg=^austritt;
+      austritt=object (fenster)
+         constructor neu;
+       private
+         procedure blocktriggern (von,bis:messwert); virtual;
+         end;
 
       triggerungsliste=array ['A'..listmax] of triggerungzg;
 
-      { Weitere Filter als ErgÑnzung zur Unit "TLFILTER" }
+      { Weitere Filter als Ergaenzung zur Unit "TLFILTER" }
 
       { Abstakter Filter mit Triggerliste }
       triggerfilter=object (filter)
@@ -158,7 +174,7 @@ type  { Triggerlisten }
       zaehltfilter=object (triggerfilter)
          constructor neu(trigliste:char);
          procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { Umschaltung auf Punkte }
@@ -173,7 +189,7 @@ type  { Triggerlisten }
       freqfilter=object (triggerfilter)
          constructor neu(trigliste:char);
          procedure einheitgenerieren(var beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { Zeitdifferenz aus benachbarten Triggerpunkten berechnet }
@@ -181,7 +197,7 @@ type  { Triggerlisten }
       intervallfilter=object (triggerfilter)
          constructor neu(trigliste:char);
          procedure einheitgenerieren(var beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { Werte an den Triggerstellen werden zu einem Linienzug verbunden }
@@ -189,21 +205,49 @@ type  { Triggerlisten }
       polygonfilter=object (triggerfilter)
          constructor neu(trigliste:char);
          procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
         private
          erneut:boolean;
-         lialt,realt:word;
-         liposi,reposi:longint;
-         liwert,rewert:comp;
+         lialt,realt:exword;
+         liposi,reposi:grossint;
+         liwert,rewert:grossintcomp;
          end;
 
-      { Zeitdifferenzen zwischen Triggerlisten }
+      { Werte an den Triggerstellen werden aus eine ASCII-Liste gelesen }
+      ywert=messwert; { ...dann passts mit der 64kB-Grenze }
+      alistentyp=array[1..triggermax] of ywert;
+      asciifilterzg=^asciifilter;
+      asciifilter=object (triggerfilter)
+         constructor neu(trigliste:char; aname:string);
+         procedure einheitgenerieren(var beleg:belegung); virtual;
+         procedure vorbereitung (frequenz:extended); virtual;
+         function gefiltert (posi:grossint):sample; virtual;
+         constructor load (var s:tbufstream);
+         procedure store (var s:tbufstream);
+        private
+         aliste:alistentyp;
+         amax:ywert;
+         end;
+
+      { Zeitdifferenzen zwischen Triggerlisten - alt}
+      diffilteraltzg=^diffilteralt;
+      diffilteralt=object (doppeltriggerfilter)
+         smax:extended;
+         constructor neu(retrigliste,ertrigliste:char; msmax:grossint);
+         procedure einheitgenerieren(var beleg:belegung); virtual;
+         function gefiltert (posi:grossint):sample; virtual;
+         constructor load (var s:tbufstream);
+         procedure store (var s:tbufstream);
+         end;
+
+      { Zeitdifferenzen zwischen Triggerlisten - neu}
       diffilterzg=^diffilter;
       diffilter=object (doppeltriggerfilter)
          smax:extended;
-         constructor neu(retrigliste,ertrigliste:char; msmax:longint);
+         typ:(naechster,vorwaerts,rueckwaerts);
+         constructor neu(retrigliste,ertrigliste:char; msmax:grossint; typchar:char);
          procedure einheitgenerieren(var beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
@@ -211,22 +255,35 @@ type  { Triggerlisten }
       { Phasenfilter }
       phasenfilterzg=^phasenfilter;
       phasenfilter=object (doppeltriggerfilter)
-         peri:longint;
-         constructor neu(retrigliste,ertrigliste:char; perioden:longint);
+         peri:grossint;
+         constructor neu(retrigliste,ertrigliste:char; perioden:grossint);
          procedure einheitgenerieren(var beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
 
-      { Hilfsfeld fÅr phasenbezogene Auswertung }
+      { TL-Integrations- Filter }
+      tlintfilterzg=^tlintfilter;
+      tlintfilter=object (triggerfilter)
+       public
+         constructor neu(trigliste:char);
+       private
+         gefiltertwert:sample;
+         posiwert:grossint;
+         procedure einheitgenerieren (var beleg:belegung); virtual;
+         procedure vorbereitung (frequenz:extended); virtual;
+         function gefiltert (posi:grossint):sample; virtual;
+         end;
 
-      weiser=array[1..triggermax] of word;
+      { Hilfsfeld fuer phasenbezogene Auswertung }
+
+      weiser=array[1..triggermax] of exword;
       triggerweiser=object
          weisliste:array[1..maxfiles] of
                     record
-                       t:^weiser; l:word;
-                       n:word  end;
+                       t:^weiser; l:exword;
+                       n:exword  end;
          gesamt:longint;
          mittelabstand:messwert;
          procedure zaehlen (var feld:triggerung; minabst,maxabst:messwert);
@@ -234,12 +291,14 @@ type  { Triggerlisten }
          end;
 
 
-const triggeranz:word=triggermax;
-      triggeranf:word=1;
-      triggerabz:word=1;
+const triggeranz:exword=triggermax;
+      triggeranf:exword=1;
+      triggerabz:exword=1;
       triggerdst:messwert=0;
 
 var   tliste:triggerungsliste;
+
+procedure autoblock (aktfile:byte);
 
 procedure manager;
 
@@ -254,7 +313,7 @@ procedure streamget (var s:tbufstream);
 implementation
 
 type  uebersicht=array['A'..listmax] of filemenge;
-      zahlenuebersicht=array['A'..listmax,1..maxfiles] of word;
+      zahlenuebersicht=array['A'..listmax,1..maxfiles] of exword;
       matrix=object
          tl:uebersicht;
          unsinn:boolean;     escape:boolean;
@@ -270,8 +329,8 @@ type  uebersicht=array['A'..listmax] of filemenge;
          end;
 
       trist=object
-         gesamt:word;
-         zaehler,abzaehler:word;
+         gesamt:exword;
+         zaehler,abzaehler:exword;
          letztstelle:messwert;
          zn:byte;
          procedure beginn(trfile:byte);       procedure weiter(stelle:messwert);
@@ -279,10 +338,10 @@ type  uebersicht=array['A'..listmax] of filemenge;
          end;
       gleitschw=object
          schw:wert;
-         nkorr,n2korr:longint;
+         nkorr,n2korr:grossint;
          procedure beginn (nmittel,bmittel:extended);
-         procedure mitteln (stekorr:longint; tr:byte);
-         procedure zaehlt (var stekorr:longint; tr:byte);
+         procedure mitteln (stekorr:grossint; tr:byte);
+         procedure zaehlt (var stekorr:grossint; tr:byte);
          end;
 
 const bloecke:boolean=false;
@@ -309,13 +368,17 @@ const bloecke:boolean=false;
                              load:@fenster.load;      store:@fenster.store);
       raequidistant:tstreamrec=(objtype:108;          vmtlink:ofs(typeof(aequidistant)^);
                              load:@aequidistant.load; store:@aequidistant.store);
+      reintritt:tstreamrec= (objtype:109;             vmtlink:ofs(typeof(eintritt)^);
+                             load:@fenster.load;      store:@fenster.store);
+      raustritt:tstreamrec= (objtype:110;        vmtlink:ofs(typeof(austritt)^);
+                             load:@fenster.load;      store:@fenster.store);
 
       rfreqfilter:tstreamrec=(objtype:120;            vmtlink:ofs(typeof(freqfilter)^);
                              load:@triggerfilter.load;store:@triggerfilter.store);
       rpolygonfilter:tstreamrec=(objtype:121;         vmtlink:ofs(typeof(polygonfilter)^);
                              load:@triggerfilter.load;store:@triggerfilter.store);
-      rdiffilter:tstreamrec=(objtype:122;             vmtlink:ofs(typeof(diffilter)^);
-                             load:@diffilter.load;    store:@diffilter.store);
+      rdiffilteralt:tstreamrec=(objtype:122;          vmtlink:ofs(typeof(diffilteralt)^);
+                             load:@diffilteralt.load; store:@diffilteralt.store);
       rphasenfilter:tstreamrec=(objtype:123;          vmtlink:ofs(typeof(phasenfilter)^);
                              load:@phasenfilter.load; store:@phasenfilter.store);
       rpunktefilter:tstreamrec=(objtype:124;          vmtlink:ofs(typeof(punktefilter)^);
@@ -324,6 +387,12 @@ const bloecke:boolean=false;
                              load:@triggerfilter.load;store:@triggerfilter.store);
       rintervallfilter:tstreamrec=(objtype:126;       vmtlink:ofs(typeof(intervallfilter)^);
                              load:@triggerfilter.load;store:@triggerfilter.store);
+      rdiffilter:tstreamrec=(objtype:127;             vmtlink:ofs(typeof(diffilter)^);
+                             load:@diffilter.load;    store:@diffilter.store);
+      rasciifilter:tstreamrec=(objtype:128;           vmtlink:ofs(typeof(asciifilter)^);
+                             load:@asciifilter.load;  store:@asciifilter.store);
+      rtlintfilter:tstreamrec=(objtype:129;             vmtlink:ofs(typeof(tlintfilter)^);
+                             load:@triggerfilter.load;store:@triggerfilter.store);
 
 var   mat:zahlenmatrix;
       verfol:trist;
@@ -331,6 +400,48 @@ var   mat:zahlenmatrix;
       aut:^triggerliste;
       trind:char;
       abbruch:boolean;
+
+
+procedure autoblock (aktfile:byte);
+var   ta,tb:char;
+      wandert:listenzeiger;
+      i,j:longint;
+      dummy,re:exword;
+      linksf,rechtsf:byte;
+begin
+ueberschrift(false,'Block Creation','Info',farbe4);
+triggeruebersicht;
+gotoxy(1,17); zwischen('Dialogue',farbe4);
+window(1,21,80,25);
+if aktfile=0 then begin linksf:=1; rechtsf:=filenr end
+             else begin linksf:=aktfile; rechtsf:=aktfile end;
+ta:=upcase(readchar('Block begin: Trigger list','A'));
+if not (ta in['A'..listmax]) then begin
+   fehler('Undefined trigger list'); warte; exit end;
+tb:=upcase(readchar('Block end: Trigger list','B'));
+if not (tb in['A'..listmax]) then begin
+   fehler('Undefined trigger list'); warte; exit end;
+writeln;
+for aktfile:=linksf to rechtsf do begin
+   j:=0;
+   with liste[aktfile], tliste[ta]^.fil[aktfile] do begin
+      wandert:=block^;
+      while wandert^.next<>nil do raus(wandert);
+      for i:=1 to automn do begin
+         tliste[tb]^.fil[aktfile].such(0,tliste[tb]^.fil[aktfile].automn,autom^[i],dummy,re);
+            if (tliste[tb]^.fil[aktfile].autom^[re]<autom^[i+1]) and
+               (tliste[tb]^.fil[aktfile].autom^[re]>autom^[i]) then begin
+            rein(wandert);
+            wandert^.von:=autom^[i];
+            wandert^.bis:=tliste[tb]^.fil[aktfile].autom^[re];
+            wandert:=wandert^.next;
+            inc(j);
+            end;
+         end;
+      end;
+   writeln(liste[aktfile].name,' :',j,' blocks created.');
+   end;
+end;
 
 procedure triggerdaten.nimm (var aut:triggerliste; gesamt:longint);
 var   i:longint;
@@ -366,9 +477,9 @@ if automda then begin
    automda:=false; automn:=0 end;
 end;
 
-procedure triggerdaten.such (links,rechts:word; nach:messwert; var li,re:word);
+procedure triggerdaten.such (links,rechts:exword; nach:messwert; var li,re:exword);
 { Binaeres Suchen zwischen "links" und "rechts" in der TL nach "nach": }
-var   neu:word;
+var   neu:exword;
 begin
 li:=links; re:=rechts;
 while re-li>1 do begin
@@ -407,20 +518,20 @@ procedure zeile;
 var   ti:char;
 begin
 write(fi:3,' : ',liste[fi].namen:8,'   ');
-for ti:='A' to listmax do if fi in tl[ti] then write(tz[ti,fi]:5)
-                                          else write('-':5);
+for ti:='A' to listmax do if fi in tl[ti] then write(tz[ti,fi]:7)
+                                          else write('-':7);
 writeln;
 end;
 
 begin
 zn:=wherey;
-write('File':14,'   '); for ti:='A' to listmax do write(ti:5); writeln(lfcr);
+write('File':14,'   '); for ti:='A' to listmax do write(ti:7); writeln(lfcr);
 for fi:=1 to filenr do zeile;
 end;
 
 procedure zahlenmatrix.erstsprung;
 begin
-wx:=18+(ord(tn)-ord('A'))*5;
+wx:=18+(ord(tn)-ord('A'))*7;
 wy:=zn+1+fn;
 gotoxy(wx,wy);
 end;
@@ -457,6 +568,7 @@ abbruch:=keypressed and (readkey=#27);
 end;
 
 procedure trist.weiter (stelle:messwert);
+var ausgabe:boolean;
 begin
 if stelle-letztstelle>=triggerdst then begin
    letztstelle:=stelle;
@@ -465,11 +577,12 @@ if stelle-letztstelle>=triggerdst then begin
       if abzaehler<triggerabz then inc(abzaehler)
                               else begin
          inc(gesamt); aut^[gesamt]:=stelle;
-         mat.sprung; write(gesamt:5);
+         ausgabe:= (gesamt mod 128) = 0;
+         if ausgabe then begin mat.sprung; write(gesamt:7) end;
          abzaehler:=1;
          end;
    end;
-gotoxy(32,zn); write(zeit(stelle):8);
+if ausgabe then begin gotoxy(32,zn); write(zeit(stelle):8) end;
 if keypressed and (readkey=#27) then abbruch:=true;
 end;
 
@@ -494,8 +607,8 @@ fi:=1; while not fil[fi].automda and (fi<filenr) do inc(fi);
 erstfile:=fi;
 end;
 
-function triggerung.triggsum:word;
-var   i:byte; summe:word;
+function triggerung.triggsum:exword;
+var   i:byte; summe:exword;
 begin
 summe:=0; for i:=1 to filenr do inc(summe,fil[i].automn);
 triggsum:=summe;
@@ -602,6 +715,8 @@ name:=extwort(extzeit(anfa),3,1)+' ms + equidistant '
       +extwort(extzeit(dist),3,1)+' ms';
 end;
 
+{ Alte Prozedur ohne Bloecke
+
 procedure aequidistant.triggern (dabei:filemenge);
 var   trfile:byte;
       hierbei:messwert;
@@ -619,6 +734,16 @@ for trfile:=1 to filenr do if trfile in dabei then
    nimm(aut^,verfol.gesamt);
    schliesse;
    if abbruch then exit;
+   end;
+end;}
+
+procedure aequidistant.blocktriggern (von,bis:messwert);
+var hierbei:messwert;
+begin
+hierbei:=anfa+von;
+while (bis>=hierbei) and not verfol.aufhoeren do begin
+   verfol.weiter(hierbei);
+   hierbei:=hierbei+dist;
    end;
 end;
 
@@ -664,7 +789,7 @@ name:=name+'rising threshold';
 end;
 
 procedure hoch.blocktriggern (von,bis:messwert);
-var   stekorr,vonkorr,biskorr:longint;
+var   stekorr,vonkorr,biskorr:grossint;
 begin
 vonkorr:=trunc(von*korr)+1; biskorr:=trunc(bis*korr);
 stekorr:=vonkorr;
@@ -683,7 +808,7 @@ name:=name+'falling threshold';
 end;
 
 procedure runter.blocktriggern (von,bis:messwert);
-var   stekorr,vonkorr,biskorr:longint;
+var   stekorr,vonkorr,biskorr:grossint;
 begin
 vonkorr:=trunc(von*korr)+1; biskorr:=trunc(bis*korr);
 stekorr:=vonkorr;
@@ -720,15 +845,16 @@ begin
 n2korr:=round(nmittel*korr) div 2; nkorr:=n2korr*2+1;
 end;
 
-procedure gleitschw.mitteln (stekorr:longint; tr:byte);
-var i:longint;
+procedure gleitschw.mitteln (stekorr:grossint; tr:byte);
+var i:grossint;
 begin
 schw:=0;
-for i:=stekorr-n2korr to stekorr+n2korr do schw:=schw+dat(i,tr);
+i:=stekorr-n2korr;
+while i<=stekorr+n2korr do begin schw:=schw+dat(i,tr); inc(i) end;
 schw:=schw/nkorr;
 end;
 
-procedure gleitschw.zaehlt (var stekorr:longint; tr:byte);
+procedure gleitschw.zaehlt (var stekorr:grossint; tr:byte);
 begin
 inc(stekorr);
 schw:=schw-(dat(stekorr-n2korr-1,tr)-dat(stekorr+n2korr,tr))/nkorr;
@@ -741,9 +867,9 @@ name:='minimum < gliding average';
 end;
 
 procedure minimum.blocktriggern (von,bis:messwert);
-var   l,r:longint;
-      hilf,extr:longint;
-      stekorr,vonkorr,biskorr,bkorr:longint;
+var   l,r:grossint;
+      hilf,extr:grossint;
+      stekorr,vonkorr,biskorr,bkorr:grossint;
       glesch:gleitschw;
 
 begin
@@ -772,9 +898,9 @@ name:='maximum > gliding average';
 end;
 
 procedure maximum.blocktriggern (von,bis:messwert);
-var   l,r:longint;
-      hilf,extr:longint;
-      stekorr,vonkorr,biskorr,bkorr:longint;
+var   l,r:grossint;
+      hilf,extr:grossint;
+      stekorr,vonkorr,biskorr,bkorr:grossint;
       glesch:gleitschw;
 
 begin
@@ -827,9 +953,9 @@ end;
 
 procedure fenstermaximum.blocktriggern (von,bis:messwert);
 label zuhoch;
-var   l,r:longint;
+var   l,r:grossint;
       hilf,extr:wert;
-      stekorr,vonkorr,biskorr,vorlaeufigkorr:longint;
+      stekorr,vonkorr,biskorr,vorlaeufigkorr:grossint;
 
 begin
 vonkorr:=trunc(von*korr)+1; biskorr:=trunc(bis*korr);
@@ -844,12 +970,14 @@ repeat
     while (dat(r,tr)>=schwunten) and (r<=biskorr) do inc(r);
     if r>biskorr then exit;
     extr:=schwunten; vorlaeufigkorr:=l;
-    for stekorr:=l to r do begin
+    stekorr:=l;
+    while stekorr<=r do begin
        hilf:=dat(stekorr,tr);
        if hilf>extr then begin
           if hilf>schwoben then goto zuhoch;
           extr:=hilf; vorlaeufigkorr:=stekorr;
           end;
+       inc(stekorr)
        end;
     verfol.weiter(vorlaeufigkorr/korr);
 until verfol.aufhoeren;
@@ -863,9 +991,9 @@ end;
 
 procedure fensterminimum.blocktriggern (von,bis:messwert);
 label zuniedrig;
-var   l,r:longint;
+var   l,r:grossint;
       hilf,extr:wert;
-      stekorr,vonkorr,biskorr,vorlaeufigkorr:longint;
+      stekorr,vonkorr,biskorr,vorlaeufigkorr:grossint;
 
 begin
 vonkorr:=trunc(von*korr)+1; biskorr:=trunc(bis*korr);
@@ -880,21 +1008,70 @@ repeat
     while (dat(r,tr)<=schwoben) and (r<=biskorr) do inc(r);
     if r>biskorr then exit;
     extr:=schwoben; vorlaeufigkorr:=l;
-    for stekorr:=l to r do begin
+    stekorr:=l;
+    while stekorr<=r do begin
        hilf:=dat(stekorr,tr);
        if hilf<extr then begin
           if hilf<schwunten then goto zuniedrig;
           extr:=hilf; vorlaeufigkorr:=stekorr;
           end;
+       inc(stekorr)
        end;
     verfol.weiter(vorlaeufigkorr/korr);
+until verfol.aufhoeren;
+end;
+
+{ Ein- und Austritt }
+
+constructor eintritt.neu;
+begin
+fenster.neu;
+name:=name+'entering window';
+end;
+
+procedure eintritt.blocktriggern (von,bis:messwert);
+var   stekorr,vonkorr,biskorr:grossint;
+      hilf:wert;
+begin
+vonkorr:=trunc(von*korr)+1; biskorr:=trunc(bis*korr);
+stekorr:=vonkorr;
+repeat
+   hilf:=dat(stekorr,tr);
+   while (hilf>=schwunten) and (hilf<=schwoben) and (stekorr<=biskorr) do
+      begin inc(stekorr); hilf:=dat(stekorr,tr) end;
+   while ((hilf<schwunten) or (hilf>schwoben)) and (stekorr<=biskorr) do
+      begin inc(stekorr); hilf:=dat(stekorr,tr) end;
+   if stekorr>biskorr then exit;
+   verfol.weiter((stekorr-0.5)/korr);
+until verfol.aufhoeren;
+end;
+
+constructor austritt.neu;
+begin
+fenster.neu;
+name:=name+'leaving window';
+end;
+
+procedure austritt.blocktriggern (von,bis:messwert);
+var   stekorr,vonkorr,biskorr:grossint;
+      hilf:wert;
+begin
+vonkorr:=trunc(von*korr)+1; biskorr:=trunc(bis*korr);
+stekorr:=vonkorr;
+repeat
+   hilf:=dat(stekorr,tr);
+   while ((hilf<schwunten) or (hilf>schwoben)) and (stekorr<=biskorr) do
+      begin inc(stekorr); hilf:=dat(stekorr,tr) end;
+   while (hilf>=schwunten) and (hilf<=schwoben) and (stekorr<=biskorr) do
+      begin inc(stekorr); hilf:=dat(stekorr,tr) end;
+   if stekorr>biskorr then exit;
+   verfol.weiter((stekorr-0.5)/korr);
 until verfol.aufhoeren;
 end;
 
 { triggerfilter }
 
 procedure triggerfilter.vorbereitung (frequenz:extended);
-var   i:longint;
 begin
 trdaten:=tliste[trliste]^.fil[offennr];
 end;
@@ -914,7 +1091,6 @@ end;
 { doppeltriggerfilter }
 
 procedure doppeltriggerfilter.vorbereitung (frequenz:extended);
-var   i:longint;
 begin
 retrdaten:=tliste[retrliste]^.fil[offennr];
 ertrdaten:=tliste[ertrliste]^.fil[offennr];
@@ -951,9 +1127,9 @@ with beleg do begin
    end;
 end;
 
-function zaehltfilter.gefiltert (posi:longint):sample;
+function zaehltfilter.gefiltert (posi:grossint):sample;
 const maxminsample=maxsample-minsample;
-var   li,re:word;
+var   li,re:exword;
 begin
 with trdaten do begin
    such(0,automn+1,posi/korr,li,re);
@@ -997,8 +1173,8 @@ with beleg do begin
    end;
 end;
 
-function freqfilter.gefiltert (posi:longint):sample;
-var   li,re:word;
+function freqfilter.gefiltert (posi:grossint):sample;
+var   li,re:exword;
 begin
 with trdaten do begin
    such(0,automn+1,posi/korr,li,re);
@@ -1027,8 +1203,8 @@ with beleg do begin
    end;
 end;
 
-function intervallfilter.gefiltert (posi:longint):sample;
-var   li,re:word;
+function intervallfilter.gefiltert (posi:grossint):sample;
+var   li,re:exword;
       t:extended;
 begin
 with trdaten do begin
@@ -1056,8 +1232,8 @@ triggerfilter.vorbereitung(frequenz);
 erneut:=false;
 end;
 
-function polygonfilter.gefiltert (posi:longint):sample;
-var   li,re:word;
+function polygonfilter.gefiltert (posi:grossint):sample;
+var   li,re:exword;
 begin
 with trdaten do begin
    such(0,automn+1,posi/korr,li,re);
@@ -1073,9 +1249,80 @@ with trdaten do begin
    end;
 end;
 
-{ diffilter }
+{ asciifilter }
 
-constructor diffilter.neu(retrigliste,ertrigliste:char; msmax:longint);
+constructor asciifilter.neu(trigliste:char; aname:string);
+var   afile:text;
+      i:grossint; dummy:extended;
+      atmax:ywert;
+begin
+trliste:=trigliste;
+fillchar(aliste,(sizeof(aliste)),0);
+name:='ASCII - Read Error "'+aname+'"';
+amax:=1;
+assign(afile,aname);
+reset(afile); if lesefehler then exit;
+i:=0; atmax:=0;
+while not eof(afile) do begin
+   inc(i);
+   readln(afile,dummy,aliste[i]);
+   if abs(aliste[i])>atmax then atmax:=abs(aliste[i]);
+   if atmax>0 then amax:=atmax;
+   if lesefehler or (i>=triggermax) then exit;
+   end;
+close(afile);
+name:='ASCII ('+trliste+'+'+aname+')';
+end;
+
+procedure asciifilter.vorbereitung (frequenz:extended);
+begin
+triggerfilter.vorbereitung(frequenz);
+end;
+
+procedure asciifilter.einheitgenerieren(var beleg:belegung);
+begin
+inherited einheitgenerieren(beleg);
+with beleg do begin
+   faktor:=amax/maxsample/0.9;
+   anfang:='U';
+   sekunde:=0;
+   negativ:=true;
+   end;
+end;
+
+function asciifilter.gefiltert (posi:grossint):sample;
+var   li,re:exword;
+      liposi,reposi:grossint;
+      liwert,rewert:extended;
+begin
+with trdaten do begin
+   such(0,automn+1,posi/korr,li,re);
+   if li<1 then li:=1; if re>automn then re:=automn;
+   liposi:=zwi(autom^[li]); reposi:=zwi(autom^[re]);
+   liwert:=aliste[li]/amax*(maxsample*0.9); rewert:=aliste[re]/amax*(maxsample*0.9);
+   if li=re then gefiltert:=round(liwert)
+            else gefiltert:=trunc(((reposi-posi)*liwert+(posi-liposi)*rewert)
+                             /(reposi-liposi));
+   end;
+end;
+
+constructor asciifilter.load (var s:tbufstream);
+begin
+triggerfilter.load(s);
+s.read(aliste,sizeof(alistentyp));
+s.read(amax,sizeof(ywert));
+end;
+
+procedure asciifilter.store (var s:tbufstream);
+begin
+triggerfilter.store(s);
+s.write(aliste,sizeof(alistentyp));
+s.write(amax,sizeof(ywert));
+end;
+
+{ diffilter - alt}
+
+constructor diffilteralt.neu(retrigliste,ertrigliste:char; msmax:grossint);
 begin
 retrliste:=retrigliste; ertrliste:=ertrigliste;
 smax:=msmax/1000;
@@ -1083,7 +1330,7 @@ name:='Diff. TL '+retrliste+ ' minus '+ertrliste
       +' (Ò'+wort(msmax)+'ms)';
 end;
 
-procedure diffilter.einheitgenerieren(var beleg:belegung);
+procedure diffilteralt.einheitgenerieren(var beleg:belegung);
 begin
 inherited einheitgenerieren(beleg);
 with beleg do begin
@@ -1094,9 +1341,9 @@ with beleg do begin
    end;
 end;
 
-function diffilter.gefiltert (posi:longint):sample;
+function diffilteralt.gefiltert (posi:grossint):sample;
 var   stelle:messwert;
-      li,re:word;
+      li,re:exword;
       rebei,erbei:messwert;
 begin
 stelle:=posi/korr;
@@ -1115,6 +1362,65 @@ with ertrdaten do begin
 gefiltert:=round((erbei-rebei)/fre/smax*maxsample);
 end;
 
+constructor diffilteralt.load (var s:tbufstream);
+begin
+doppeltriggerfilter.load(s);
+s.read(smax,sizeof(extended));
+end;
+
+procedure diffilteralt.store (var s:tbufstream);
+begin
+doppeltriggerfilter.store(s);
+s.write(smax,sizeof(extended));
+end;
+
+{ diffilter - neu }
+
+constructor diffilter.neu(retrigliste,ertrigliste:char; msmax:grossint; typchar:char);
+begin
+retrliste:=retrigliste; ertrliste:=ertrigliste;
+case typchar of 'F':typ:=vorwaerts; 'B':typ:=rueckwaerts; else typ:=naechster; end;
+smax:=msmax/1000;
+name:='Diff. TL '+retrliste+ ' minus '+ertrliste
+      +' (Ò'+wort(msmax)+'ms,'+typchar+')';
+end;
+
+procedure diffilter.einheitgenerieren(var beleg:belegung);
+begin
+inherited einheitgenerieren(beleg);
+with beleg do begin
+   faktor:=smax/maxsample;
+   anfang:='';
+   sekunde:=1;
+   negativ:=true;
+   end;
+end;
+
+function diffilter.gefiltert (posi:grossint):sample;
+var   stelle:messwert;
+      li,re:exword;
+      rebei,erbei:messwert;
+begin
+stelle:=posi/korr;
+with retrdaten do begin
+   such(0,automn+1,stelle,li,re);
+   if (stelle-autom^[li])>(autom^[re]-stelle) then rebei:=autom^[re]
+                                              else rebei:=autom^[li];
+   end;
+with ertrdaten do begin
+   such(0,automn+1,rebei,li,re);
+   if (li=0) or (re=automn+1) then begin
+      gefiltert:=0; exit end;
+   case typ of
+      naechster: if (rebei-autom^[li])>(autom^[re]-rebei) then erbei:=autom^[re]
+                                                         else erbei:=autom^[li];
+      vorwaerts: erbei:=autom^[re];
+      rueckwaerts: erbei:=autom^[li];
+      end;
+   end;
+gefiltert:=round((erbei-rebei)/fre/smax*maxsample);
+end;
+
 constructor diffilter.load (var s:tbufstream);
 begin
 doppeltriggerfilter.load(s);
@@ -1129,7 +1435,7 @@ end;
 
 { phasenfilter }
 
-constructor phasenfilter.neu(retrigliste,ertrigliste:char; perioden:longint);
+constructor phasenfilter.neu(retrigliste,ertrigliste:char; perioden:grossint);
 begin
 retrliste:=retrigliste; ertrliste:=ertrigliste; peri:=perioden;
 if peri=0 then name:='Phase TL '+ertrliste+' in '+retrliste
@@ -1149,10 +1455,10 @@ with beleg do begin
    end;
 end;
 
-function phasenfilter.gefiltert (posi:longint):sample;
+function phasenfilter.gefiltert (posi:grossint):sample;
 var   stelle:messwert;
-      li,re{,lialt}:word;
-      lip,rep:longint;
+      li,re{,lialt}:exword;
+      lip,rep:grossint;
       repbeili,repbeire,rebeili,erbei:messwert;
 begin
 stelle:=posi/korr;
@@ -1180,13 +1486,56 @@ end;
 constructor phasenfilter.load (var s:tbufstream);
 begin
 doppeltriggerfilter.load(s);
-s.read(peri,sizeof(longint));
+s.read(peri,sizeof(grossint));
 end;
 
 procedure phasenfilter.store (var s:tbufstream);
 begin
 doppeltriggerfilter.store(s);
-s.write(peri,sizeof(longint));
+s.write(peri,sizeof(grossint));
+end;
+
+{ TL-Integrationsfilter }
+
+constructor tlintfilter.neu(trigliste:char);
+begin
+trliste:=trigliste;
+name:='* dt [TL '+trliste+']';
+end;
+
+procedure tlintfilter.einheitgenerieren (var beleg:belegung);
+begin
+filter.einheitgenerieren(beleg);
+with beleg do begin faktor:=faktor/fre; inc(sekunde) end;
+end;
+
+procedure tlintfilter.vorbereitung (frequenz:extended);
+begin
+triggerfilter.vorbereitung(frequenz);
+posiwert:=0; gefiltertwert:=0;
+end;
+
+function tlintfilter.gefiltert (posi:grossint):sample;
+var  i:grossint;
+     li,re:exword;
+begin
+with trdaten do begin
+   such(0,automn+1,posi/korr,li,re);
+   if (re<=automn) then if autom^[re]<=posiwert/korr then
+            if li=0 then begin posiwert:=0; gefiltertwert:=0 end
+                    else begin posiwert:=zwi(autom^[li]); gefiltertwert:=0 end;
+   if (li>0) then if autom^[li]>=posiwert/korr then begin posiwert:=zwi(autom^[li]); gefiltertwert:=0 end;
+   end;
+if posi<posiwert then begin
+   i:=posi+1;
+   while i<=posiwert do begin dec(gefiltertwert,next^.gefiltert(i)); inc(i) end
+   end
+                 else begin
+   i:=posiwert+1;
+   while i<=posi do begin inc(gefiltertwert,next^.gefiltert(i)); inc(i) end
+   end;
+posiwert:=posi;
+gefiltert:=gefiltertwert;
 end;
 
 { triggerweiser }
@@ -1199,7 +1548,7 @@ begin
 gesamt:=0; sum:=0;
 for nr:=1 to filenr do with weisliste[nr], feld, fil[nr] do begin
    l:=max(automn-1,0);
-   getmem(t,sizeof(word)*l);
+   getmem(t,sizeof(exword)*l);
    if automda then begin
       n:=0;
       for tp:=1 to automn-1 do begin
@@ -1215,9 +1564,9 @@ if gesamt<>0 then mittelabstand:=sum/gesamt;
 end;
 
 procedure triggerweiser.frei;
-var   nr:word;
+var   nr:exword;
 begin
-for nr:=1 to filenr do with weisliste[nr] do freemem(t,sizeof(word)*l);
+for nr:=1 to filenr do with weisliste[nr] do freemem(t,sizeof(exword)*l);
 end;
 
 
@@ -1261,15 +1610,16 @@ end;
 procedure triggeruebersicht;
 var   trind:char;
 begin
-writeln('List':5,'Channel':8,'Evts.':6,'Files':6,'  Mode and Label');
+writeln('List':5,'Channel':8,'Evts.':8,'Files':6,'  Mode and Label');
 for trind:='A' to listmax do with tliste[trind]^ do begin
-   writeln(trind:2,schriftliste[tr]:11,triggsum:5,fileanz:5,'    ',tliste[trind]^.name);
+   writeln(trind:2,schriftliste[tr]:11,triggsum:8,fileanz:4,'    ',tliste[trind]^.name);
    end;
 end;
 
 
 procedure manager;
 var   trind:char;
+      i:longint;
 
 procedure aktuellkanal;
 var   liste:filterliste;
@@ -1295,11 +1645,11 @@ begin
 ueberschrift(false,'Trigger Mode','Info',farbe3);
 writeln('Trigger channel: ',akttrkan,' (',schriftliste[akttrkan],')',lfcr);
 triggeruebersicht; writeln;
-writeln('Trigger modes:',lfcr,
-        '  r = Rising Threshold        f = Falling Threshold',lfcr,
-        '  x = Maximum > Gl. Average   n = Minimum < Gl. Average',lfcr,
-        '  a = Maximum in Window       i = Minimum in Window',lfcr,
-        '  p = User Defined            e = Equidistant              u = Undefined');
+writeln('Modes: r = Rising Threshold       f = Falling Threshold',lfcr,
+        '       x = Maximum > Gl. Average  n = Minimum < Gl. Average',lfcr,
+        '       a = Maximum in Window      i = Minimum in Window',lfcr,
+        '       > = Entering Window        < = Leaving Window',lfcr,
+        '       p = User Defined           e = Equidistant              u = Undefined');
 writeln;
 gotoxy(1,19); zwischen('Dialogue',farbe3);
 window(1,23,80,zeilmax);
@@ -1307,7 +1657,7 @@ ta:=upcase(readchar('Trigger list','A'));
 if not (ta in['A'..listmax]) then begin
    fehler('Undefined trigger list'); warte; exit end;
 artbu:=readchar('Trigger mode','r');
-if not (artbu in ['u','r','f','x','n','p','a','i','e']) then begin
+if not (artbu in ['u','r','f','x','n','p','a','i','e','>','<']) then begin
    fehler('Undefined trigger mode'); warte; exit end;
 dispose(tliste[ta],alt);
 case artbu of
@@ -1316,6 +1666,7 @@ case artbu of
    'n':tliste[ta]:=new(minimumzg,neu);  'p':tliste[ta]:=new(punktezg,neu);
    'a':tliste[ta]:=new(fenstermaximumzg,neu);
    'i':tliste[ta]:=new(fensterminimumzg,neu);
+   '<':tliste[ta]:=new(austrittzg,neu); '>':tliste[ta]:=new(eintrittzg,neu);
    'e':tliste[ta]:=new(aequidistantzg,neu);
    end;
 with tliste[ta]^ do name:=readstring('Label',name);
@@ -1335,7 +1686,7 @@ zwischen('Dialogue',farbe3); writeln;
 bloecke:=upcase(
      readchar('Trigger range (f=complete Files, b=Blocks)                 ',
    bloeckeb[bloecke]))=upcase(bloeckeb[true]);
-puff:=readint('Maximum number of trigger points per file (max.'+wort(triggermax)+')       ',triggeranz);
+puff:=readint('Maximum number of trigger points per file (max.'+wort(triggermax)+')    ',triggeranz);
 if (puff<=0) or (puff>triggermax) then begin
    fehler('Number of trigger points out of range.'); warte end
                                   else triggeranz:=puff;
@@ -1358,10 +1709,11 @@ begin
 window(1,zeilmax-3,80,zeilmax); clrscr; window(1,3,80,zeilmax);
 end;
 begin
-ueberschrift(filenr>10,'Triggering','Info',farbe3);
-writeln(lfcr,'':27,'Content of trigger lists:',lfcr);
-mat.uebernehmen; mat.ausgabe;
 repeat
+   ueberschrift(filenr>10,'Triggering','Info',farbe3);
+   writeln(lfcr,'':27,'Content of trigger lists:',lfcr);
+   mat.uebernehmen;
+   mat.ausgabe;
    gotoxy(1,zeilmax-8); zwischen('Dialogue',farbe3);
    loeschen; gotoxy(1,zeilmax-4);
    gotoxy(1,zeilmax-6);
@@ -1385,7 +1737,7 @@ procedure triggerfile;
 const filename:string80='trigger.dat';
       ta:char='A';
 var   ausgabe:text;
-      fn,i,j:word;
+      fn,i,j:exword;
       ykanaele:kanalmenge;
       zkn:integer;
 begin
@@ -1435,9 +1787,9 @@ repeat
    triggeruebersicht;
    writeln;
    zwischen('Menu',farbe2);
-   writeln(lfcr,'    h...Trigger Channel                 t...Triggering',
-           lfcr,'    o...Trigger Mode                    e...Export Trigger Data',
-           lfcr,'    c...Trigger Conditions              m...Main Menu');
+   writeln(lfcr,'    h...Channel              t...Triggering',
+           lfcr,'    o...Mode                 e...Export Data',
+           lfcr,'    c...Conditions           b...Create Blocks         m...Main Menu');
    writeln;
    zwischen('Dialogue',farbe2);
    writeln;
@@ -1446,7 +1798,7 @@ repeat
    case upcase(trind) of
       'T':ausfuehren;      'O':triggneu;
       'C':konditionen;     'H':aktuellkanal;
-      'E':triggerfile;
+      'E':triggerfile;     'B':begin autoblock(0); warte end;
       'M':exit;
       end;
 until false;
@@ -1454,17 +1806,20 @@ end;
 
 begin
 
-registertype(rkeine);   registertype(rpunkte);
-registertype(rhoch);    registertype(rrunter);
-registertype(rminimum); registertype(rmaximum);
+registertype(rkeine);    registertype(rpunkte);
+registertype(rhoch);     registertype(rrunter);
+registertype(rminimum);  registertype(rmaximum);
 registertype(rfenstermaximum);
 registertype(rfensterminimum);
+registertype(reintritt); registertype(raustritt);
+
 registertype(raequidistant);
 
 for trind:='A' to listmax do tliste[trind]:=new(keinezg,neu);
 
 registertype(rfreqfilter);   registertype(rpolygonfilter);
-registertype(rdiffilter);    registertype(rphasenfilter);
+registertype(rdiffilteralt); registertype(rphasenfilter);
 registertype(rpunktefilter); registertype(rzaehltfilter);
-registertype(rintervallfilter);
+registertype(rintervallfilter);registertype(rdiffilter);
+registertype(rasciifilter);  registertype(rtlintfilter);
 end.

@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0}
 
 unit tlfiles;
 
@@ -10,14 +10,13 @@ unit tlfiles;
 
 interface
 
-uses  {$ifdef windows} wincrt, windos, dostowin,
-      {$else} crt, dos, {$endif}
+uses  crt, dos,
       objects, bequem,daff,wavpcm,tulab42,tlfilter;
 
 const maxfiles=20;
-      maxmesswert=2147483648.0;
+      {$ifdef fpc} maxmesswert=9223372036854775807.0; {$else} maxmesswert=2147483648.0; {$endif}
 
-type  messwert=double;                   wert=single;
+type  {$ifdef fpc} messwert=extended; wert=double; {$else} messwert=double; wert=single; {$endif}
 
       { Bei den beiden Listen "blockliste" und "punktliste" wird dieselbe Zeigerstruktur }
       { verwendet. Am Anfang und am Ende der Liste wird jeweils ein zus„tzliches Element }
@@ -31,6 +30,8 @@ type  messwert=double;                   wert=single;
       blockliste=object (tobject)
          next,vor:listenzeiger; von,bis:messwert;
          constructor neu;
+         constructor anfblock;
+         constructor endblock;
          procedure store (var s:tbufstream);
          constructor load (var s:tbufstream);
          end;
@@ -40,6 +41,8 @@ type  messwert=double;                   wert=single;
       punktliste=object (tobject)
          next,vor:punktzeiger; bei:messwert;
          constructor neu;
+         constructor anfpunkt;
+         constructor endpunkt;
          procedure store (var s:tbufstream);
          constructor load (var s:tbufstream);
         end;
@@ -55,7 +58,7 @@ type  messwert=double;                   wert=single;
          procedure store (var s:tbufstream);
          procedure load (var s:tbufstream);
          end;
-      listentyp=array[1..maxfiles] of listenfeld;
+      listentyp=packed array[1..maxfiles] of listenfeld;
 
 const kan:byte=0;
       fre:extended=0;
@@ -67,12 +70,12 @@ var   liste:listentyp;
 
 procedure oeffnen (nr:byte);
 
-function zwi (stelle:messwert):longint;
+function zwi (stelle:messwert):grossint;
 
 function extzeit (stelle:messwert):extended;
-function zeit (stelle:messwert):longint;
+function zeit (stelle:messwert):grossint;
 function messwext (zeitang:extended):messwert;
-function messw (zeitang:longint):messwert;
+function messw (zeitang:grossint):messwert;
 
 procedure rein (var zeiger:listenzeiger);
 procedure raus (var zeiger:listenzeiger);
@@ -88,13 +91,13 @@ procedure streamget (var s:tbufstream);
 
 implementation
 
-const anfblock:blockliste=(next:nil; vor:nil; von:-maxmesswert; bis:-maxmesswert);
+{const anfblock:blockliste=(next:nil; vor:nil; von:-maxmesswert; bis:-maxmesswert);
       endblock:blockliste=(next:nil; vor:nil; von:maxmesswert;  bis:maxmesswert);
 
       anfpunkt:punktliste=(next:nil; vor:nil; bei:-maxmesswert);
-      endpunkt:punktliste=(next:nil; vor:nil; bei:maxmesswert);
+      endpunkt:punktliste=(next:nil; vor:nil; bei:maxmesswert);}
 
-      rblockliste:tstreamrec=(objtype:200;
+const rblockliste:tstreamrec=(objtype:200;
                               vmtlink:ofs(typeof(blockliste)^);
                               load:@blockliste.load;
                               store:@blockliste.store);
@@ -115,7 +118,7 @@ with liste[nr] do begin
    end;
 end;
 
-function zwi (stelle:messwert):longint;
+function zwi (stelle:messwert):grossint;
 begin
 zwi:=round(stelle*korr);
 end;
@@ -125,7 +128,7 @@ begin
 extzeit:=stelle/fre*1000;
 end;
 
-function zeit (stelle:messwert):longint;
+function zeit (stelle:messwert):grossint;
 begin
 zeit:=round(extzeit(stelle));
 end;
@@ -135,7 +138,7 @@ begin
 messwext:=zeitang*fre/1000;
 end;
 
-function messw (zeitang:longint):messwert;
+function messw (zeitang:grossint):messwert;
 begin
 messw:=messwext(zeitang);
 end;
@@ -144,11 +147,11 @@ procedure listenfeld.neuzeiger;
 var   hilf:listenzeiger;
       philf:punktzeiger;
 begin
-new(hilf,neu); hilf^:=anfblock;
-new(hilf^.next,neu); hilf^.next^:=endblock; hilf^.next^.vor:=hilf;
+new(hilf,anfblock);
+new(hilf^.next,endblock); hilf^.next^.vor:=hilf;
 block:=addr(hilf^.next);
-new(philf,neu); philf^:=anfpunkt;
-new(philf^.next,neu); philf^.next^:=endpunkt; philf^.next^.vor:=philf;
+new(philf,anfpunkt);
+new(philf^.next,endpunkt); philf^.next^.vor:=philf;
 selbst:=addr(philf^.next);
 end;
 
@@ -192,14 +195,24 @@ var   hilf:listenzeiger;
 begin
 hilf:=block^;
 while hilf^.next<>nil do raus(hilf);
-dispose(hilf^.vor); dispose(hilf);
+dispose(hilf^.vor,done); dispose(hilf,done);
 philf:=selbst^;
 while philf^.next<>nil do praus(philf);
-dispose(philf^.vor); dispose(philf);
+dispose(philf^.vor,done); dispose(philf,done);
 end;
 
 constructor blockliste.neu;
 begin end;
+
+constructor blockliste.anfblock;
+begin
+next:=nil; vor:=nil; von:=-maxmesswert; bis:=-maxmesswert
+end;
+
+constructor blockliste.endblock;
+begin
+next:=nil; vor:=nil; von:=maxmesswert; bis:=maxmesswert
+end;
 
 procedure blockliste.store (var s:tbufstream);
 begin
@@ -216,6 +229,17 @@ end;
 
 constructor punktliste.neu;
 begin end;
+
+constructor punktliste.anfpunkt;
+begin
+next:=nil; vor:=nil; bei:=-maxmesswert
+end;
+
+constructor punktliste.endpunkt;
+begin
+next:=nil; vor:=nil; bei:=maxmesswert
+end;
+
 
 procedure punktliste.store (var s:tbufstream);
 begin
@@ -245,13 +269,13 @@ s.read(name,sizeof(name)); fsplit(name,named,namen,namee);
 s.read(ko,sizeof(kopfdaten));
 s.read(laenge,sizeof(messwert));
 { Die Zeigerstruktur der Bl”cke wird neu aufgebaut und die Bl”cke aus dem Stream gelesen }
-new(hilf,neu); hilf^:=anfblock;
+new(hilf,anfblock);
 block:=addr(hilf^.next);
 hilf^.next:=listenzeiger(s.get);
 hilf^.next^.vor:=hilf;
 { Die Zeigerstruktur der Punkte wird neu aufgebaut, die Liste bleibt leer }
-new(philf,neu); philf^:=anfpunkt;
-new(philf^.next,neu); philf^.next^:=endpunkt; philf^.next^.vor:=philf;
+new(philf,anfpunkt);
+new(philf^.next,endpunkt); philf^.next^.vor:=philf;
 selbst:=addr(philf^.next);
 end;
 
@@ -311,7 +335,7 @@ for i:=1 to filenr do begin
     end;
    writeln;
    end;
-writeln(lfcr,'All pointers in OK.'); warte;
+writeln(lfcr,'All pointers OK.'); warte;
 end;
 
 begin

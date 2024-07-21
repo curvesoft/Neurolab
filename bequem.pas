@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 unit  bequem;
 
@@ -18,22 +18,23 @@ const lfcr=#10#13;
 
 type  string8=string[8];
       string20=string[20];               string80=string[80];
+      {$ifdef fpc} grossint=int64; exword=longint; {$else} grossint=longint; exword=word; {$endif}
 
-function min (a,b:longint) :longint;
-function max (a,b:longint) :longint;
+function min (a,b:grossint) :grossint;
+function max (a,b:grossint) :grossint;
 function mini (a,b:integer) :integer;
 function maxi (a,b:integer) :integer;
 function mine (a,b:extended):extended;
 function maxe (a,b:extended):extended;
 
 function log (x:extended):extended;
-function pot (x:shortint):longint;
+function pot (x:shortint):grossint;
 function xpot (x:byte):extended;
 
 procedure incex (var a:extended; b:extended);
 
-function zahl (zahlstr:string20):longint;
-function wort (zahl:longint):string20;
+function zahl (zahlstr:string20):grossint;
+function wort (zahl:grossint):string20;
 function extwort (zahl:extended; l,n:byte):string20;
 function extewort (zahl:extended; a,b:byte):string20;
 procedure kompri (var puffer:string);
@@ -50,7 +51,7 @@ procedure warte;
 procedure zoeger (ms:word);
 function fileschonda (filename:string80) : boolean;
 
-function readint (text:string80; sonst:longint):longint;
+function readint (text:string80; sonst:grossint):grossint;
 function readext (text:string80; sonst:extended; l,n:byte):extended;
 function readexte (text:string80; sonst:extended; a,b:byte):extended;
 function readchar (text:string80; sonst:char):char;
@@ -61,12 +62,12 @@ implementation
 
 const  laerm:boolean=false;
 
-function min (a,b:longint) :longint;
+function min (a,b:grossint) :grossint;
 begin
 if a<b then min:=a else min:=b;
 end;
 
-function max (a,b:longint) :longint;
+function max (a,b:grossint) :grossint;
 begin
 if a<b then max:=b else max:=a;
 end;
@@ -96,7 +97,7 @@ begin
 log:=ln(x)/ln10;
 end;
 
-function pot (x:shortint):longint;
+function pot (x:shortint):grossint;
 begin
 pot:=round(exp(x*ln10));
 end;
@@ -111,14 +112,14 @@ begin
 a:=a+b;
 end;
 
-function zahl (zahlstr:string20):longint;
+function zahl (zahlstr:string20):grossint;
 var   zahlint:extended;
       kont:integer;
 begin
 val(zahlstr,zahlint,kont); zahl:=round(zahlint);
 end;
 
-function wort (zahl:longint):string20;
+function wort (zahl:grossint):string20;
 var   zahlstr:string20;
 begin
 str(zahl,zahlstr); wort:=zahlstr;
@@ -270,15 +271,15 @@ while (puffer<>'') and (puffer[length(puffer)]=' ') do delete(puffer,length(puff
 end;
 
 procedure kompri (var puffer:string);
-var   i:byte;
+var   i:grossint;
 begin
 i:=pos(' ',puffer);
 while i>0 do begin delete(puffer,i,1); i:=pos(' ',puffer) end;
 end;
 
-function readint (text:string80; sonst:longint):longint;
+function readint (text:string80; sonst:grossint):grossint;
 var   puffer:string80;  code:integer;
-      zahl:longint;
+      zahl:grossint;
 begin
 puffer:=wort(sonst);
 write(text,': ');

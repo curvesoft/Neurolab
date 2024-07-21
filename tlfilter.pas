@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 unit  tlfilter;
 
@@ -35,7 +35,7 @@ type  { Einheiten der Y-Achsen }
          gain, multi : extended;
          procedure setz (m:extended; anf:einheitstring);
          end;
-      grundlistetyp=array[0..maxkan-1] of grundtyp;
+      grundlistetyp=packed array[0..maxkan-1] of grundtyp;
 
       { Endform der Einheiten der gefilterten Daten }
       belegung=object (einheittyp)
@@ -45,7 +45,7 @@ type  { Einheiten der Y-Achsen }
          end;
 
       { Beschriftungen der Y-Achsen }
-      schriftlistentyp=array[0..maxkanal] of string[10];
+      schriftlistentyp=packed array[0..maxkanal] of string[10];
 
       { Abstraktes Filterobjekt }
       filterzeiger=^filter;
@@ -55,7 +55,7 @@ type  { Einheiten der Y-Achsen }
          destructor alt; virtual;
          procedure einheitgenerieren (var  beleg:belegung); virtual;
          procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
@@ -66,7 +66,7 @@ type  { Einheiten der Y-Achsen }
          procedure neu (breims:extended);
        private
          brei:extended;
-         breianz,breianz2:longint;
+         breianz,breianz2:grossint;
          procedure vorbereitung (frequenz:extended); virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
@@ -79,7 +79,7 @@ type  { Einheiten der Y-Achsen }
          constructor neu;
        private
          procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { arccos - Filter }
@@ -89,7 +89,7 @@ type  { Einheiten der Y-Achsen }
          constructor neu;
        private
          procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { *(-1) - Filter }
@@ -99,7 +99,7 @@ type  { Einheiten der Y-Achsen }
          constructor neu;
        private
          procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { 1/X - Filter}
@@ -109,7 +109,7 @@ type  { Einheiten der Y-Achsen }
          constructor neu;
        private
          procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { +/- Offset - Filter }
@@ -119,7 +119,7 @@ type  { Einheiten der Y-Achsen }
          constructor neu (k:byte; hoch:sample);
        private
          ho:sample;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
@@ -131,7 +131,7 @@ type  { Einheiten der Y-Achsen }
          constructor neu (malfak:extended);
        private
          float:extended;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
@@ -144,7 +144,7 @@ type  { Einheiten der Y-Achsen }
        private
          float:extended;
          procedure einheitgenerieren (var beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
@@ -155,7 +155,7 @@ type  { Einheiten der Y-Achsen }
        public
          constructor neu;
        private
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { Additionsfilter }
@@ -166,7 +166,33 @@ type  { Einheiten der Y-Achsen }
        private
          adk:byte;
          procedure einheitgenerieren (var beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
+         constructor load (var s:tbufstream);
+         procedure store (var s:tbufstream);
+         end;
+
+      { Betragssfilter }
+      betragzg=^betrag;
+      betrag=object (filter)
+       public
+         constructor neu (kanal2:byte);
+       private
+         k2:byte;
+         procedure einheitgenerieren (var beleg:belegung); virtual;
+         function gefiltert (posi:grossint):sample; virtual;
+         constructor load (var s:tbufstream);
+         procedure store (var s:tbufstream);
+         end;
+
+      { Winkel }
+      winkelzg=^winkel;
+      winkel=object (filter)
+       public
+         constructor neu (xkanal:byte);
+       private
+         xk:byte;
+         procedure einheitgenerieren (var beleg:belegung); virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
@@ -179,7 +205,7 @@ type  { Einheiten der Y-Achsen }
        private
           kk:byte;
           procedure einheitgenerieren (var beleg:belegung); virtual;
-          function gefiltert (posi:longint):sample; virtual;
+          function gefiltert (posi:grossint):sample; virtual;
           constructor load (var s:tbufstream);
           procedure store (var s:tbufstream);
           end;
@@ -191,7 +217,7 @@ type  { Einheiten der Y-Achsen }
          constructor neu;
        private
          procedure einheitgenerieren (var beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { Quadrat - Filter }
@@ -201,7 +227,7 @@ type  { Einheiten der Y-Achsen }
          constructor neu;
        private
          procedure einheitgenerieren (var beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { Glaettungs - Filter }
@@ -210,7 +236,7 @@ type  { Einheiten der Y-Achsen }
        public
          constructor neu (breims:extended);
        private
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { abstrakter Passfilter }
@@ -218,26 +244,26 @@ type  { Einheiten der Y-Achsen }
       spaltfeld=array[0..weite] of single;
       passfilter=object (filter)
        private
-         gr:longint;
+         gr:grossint;
          spaltgr:spaltzeiger;
          we:word;
-         procedure neu (grenzfreq:longint);
+         procedure neu (grenzfreq:grossint);
          destructor alt; virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
       tiefpasszg=^tiefpass;
       tiefpass=object (passfilter)
        public
-         constructor neu (grenzfreq:longint);
+         constructor neu (grenzfreq:grossint);
        private
          procedure vorbereitung (frequenz:extended); virtual;
          end;
       hochpasszg=^hochpass;
       hochpass=object (passfilter)
        public
-         constructor neu (grenzfreq:longint);
+         constructor neu (grenzfreq:grossint);
        private
          procedure vorbereitung (frequenz:extended); virtual;
          procedure einheitgenerieren (var beleg:belegung); virtual;
@@ -251,7 +277,7 @@ type  { Einheiten der Y-Achsen }
        private
          procedure einheitgenerieren (var beleg:belegung); virtual;
          procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { Integrations- Filter }
@@ -261,10 +287,10 @@ type  { Einheiten der Y-Achsen }
          constructor neu;
        private
          gefiltertwert:sample;
-         posiwert:longint;
+         posiwert:grossint;
          procedure einheitgenerieren (var beleg:belegung); virtual;
          procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { gleitender Integrations- Filter }
@@ -274,10 +300,10 @@ type  { Einheiten der Y-Achsen }
          constructor neu (breims:extended);
        private
          gefiltertwert:sample;
-         posiwert:longint;
+         posiwert:grossint;
          procedure einheitgenerieren (var beleg:belegung); virtual;
          procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
       { gleitender Linienzug- Filter }
@@ -287,10 +313,10 @@ type  { Einheiten der Y-Achsen }
          constructor neu (breims:extended);
        private
          gefiltertwert:sample;
-         posiwert:longint;
+         posiwert:grossint;
          procedure einheitgenerieren (var beleg:belegung); virtual;
          procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
      { X-Achsen-Verschiebungs - Filter }
@@ -300,9 +326,9 @@ type  { Einheiten der Y-Achsen }
          constructor neu (umms:extended);
        private
          um:extended;
-         posid:longint;
+         posid:grossint;
          procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
@@ -314,13 +340,32 @@ type  { Einheiten der Y-Achsen }
          constructor neu (breims:extended);
        private
          brei:extended;
-         br2:longint;
+         br2:grossint;
          procedure einheitgenerieren (var beleg:belegung); virtual;
          procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
+
+      { Digitalfilter }
+      digitalzg=^digital;
+      digital=object (filter)
+       public
+         constructor neu (k:byte; schwelle:sample; neinheit:string; nwert:extended);
+       private
+         schw:sample;
+         gefiltertwert:sample;
+         posilinkswert,posirechtswert:grossint;
+         neueeinheit:string;
+         neuerwert:extended;
+         procedure einheitgenerieren (var beleg:belegung); virtual;
+         procedure vorbereitung (frequenz:extended); virtual;
+         function gefiltert (posi:grossint):sample; virtual;
+         constructor load (var s:tbufstream);
+         procedure store (var s:tbufstream);
+         end;
+
 
       { Spike - Filter }
       spikefilterzg=^spikefilter;
@@ -328,12 +373,12 @@ type  { Einheiten der Y-Achsen }
        public
          constructor neu (k:byte; millisek,ablinks,abrechts:extended);
        private
-         anz:word;
+         anz:exword;
          abstli,abstre:sample;
          ms:extended;
          abli,abre:extended;
          procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
@@ -355,10 +400,10 @@ procedure einheitensetzen (frequenz:extended);
 
 procedure oeffne (name:string80; var ko:kopfdaten);
 
-function dat (posi:longint; k:byte):sample;
+function dat (posi:grossint; k:byte):sample;
 
 function extspannung (y:extended; kanal:byte):extended;
-function spannung (y:extended; kanal:byte):longint;
+function spannung (y:extended; kanal:byte):grossint;
 
 function norm (sp:extended; kanal:byte) :extended;
 
@@ -373,14 +418,14 @@ type  { Ende der Filterkette }
          ka:byte;
          constructor neu (k:byte);
          procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          constructor load (var s:tbufstream);
          procedure store (var s:tbufstream);
          end;
       weiterzg=^weiter;
       weiter=object (ende)
          procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:longint):sample; virtual;
+         function gefiltert (posi:grossint):sample; virtual;
          end;
 
 const defaulteinheit:grundtyp=
@@ -435,6 +480,16 @@ const defaulteinheit:grundtyp=
                                load:@filter.load;     store:@filter.store);
       rkorrelation:tstreamrec=(objtype:322;           vmtlink:ofs(typeof(korrelation)^);
                                load:@korrelation.load;store:@korrelation.store);
+      {rdigital    :tstreamrec=(objtype:323;           vmtlink:ofs(typeof(digital)^);
+                               load:@digital.load;    store:@digital.store);}
+      rwinkel     :tstreamrec=(objtype:324;           vmtlink:ofs(typeof(winkel)^);
+                               load:@winkel.load;     store:@winkel.store);
+      rbetrag     :tstreamrec=(objtype:325;           vmtlink:ofs(typeof(betrag)^);
+                               load:@betrag.load;     store:@betrag.store);
+      rdigital    :tstreamrec=(objtype:326;           vmtlink:ofs(typeof(digital)^);
+                               load:@digital.load;    store:@digital.store);
+
+
 
 var   filteranfang:array[1..maxkanal-1] of filterzeiger;
       kan:byte;
@@ -465,7 +520,7 @@ end;
 
 function einheittyp.plot:string80;
 var   kom:string80;
-      p:byte;
+      p:grossint;
 begin
 if (vor='') and (anfang='1') and (sekunde=0) then kom:=''
                                               else begin
@@ -518,7 +573,7 @@ if (sekunde=0) and (anfang='') then schwierig
 end;
 
 procedure einheittyp.schwierig;
-var   n:longint;
+var   n:grossint;
 begin
 n:=pred(trunc(log(faktor*maxsample*1.00001))); if n<0 then dec(n,2);
 n:=3*(n div 3);
@@ -580,7 +635,7 @@ end;
 procedure filter.vorbereitung;
 begin end;
 
-function filter.gefiltert (posi:longint):sample;
+function filter.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=next^.gefiltert(posi);
 end;
@@ -609,7 +664,7 @@ begin
 beleg.grundsetzen(ka)
 end;
 
-function ende.gefiltert (posi:longint):sample;
+function ende.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=lesef(posi,ka);
 end;
@@ -621,7 +676,7 @@ begin
 filteranfang[ka]^.einheitgenerieren(beleg);
 end;
 
-function weiter.gefiltert (posi:longint):sample;
+function weiter.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=filteranfang[ka]^.gefiltert(posi);
 end;
@@ -667,7 +722,7 @@ with beleg do begin
    end;
 end;
 
-function arcsin.gefiltert (posi:longint):sample;
+function arcsin.gefiltert (posi:grossint):sample;
 const fak=maxsample/pi*2;
 var x,x1:extended;
 begin
@@ -695,7 +750,7 @@ with beleg do begin
    end;
 end;
 
-function arccos.gefiltert (posi:longint):sample;
+function arccos.gefiltert (posi:grossint):sample;
 const fak=maxsample/pi;
       pi2=pi/2;
 var x,x1:extended;
@@ -720,7 +775,7 @@ filter.einheitgenerieren(beleg);
 beleg.negativ:=true;
 end;
 
-function invert.gefiltert (posi:longint):sample;
+function invert.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=-next^.gefiltert(posi);
 end;
@@ -749,7 +804,7 @@ with beleg do begin
    end;
 end;
 
-function einsdurch.gefiltert (posi:longint):sample;
+function einsdurch.gefiltert (posi:grossint):sample;
 var   wert:sample;
 begin
 wert:=next^.gefiltert(posi);
@@ -778,7 +833,7 @@ filter.store(s);
 s.write(ho,sizeof(sample));
 end;
 
-function offset.gefiltert (posi:longint):sample;
+function offset.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=next^.gefiltert(posi)+ho;
 end;
@@ -803,7 +858,7 @@ filter.store(s);
 s.write(float,sizeof(extended));
 end;
 
-function malfaktor.gefiltert (posi:longint):sample;
+function malfaktor.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=round(next^.gefiltert(posi)*float);
 end;
@@ -834,7 +889,7 @@ filter.einheitgenerieren(beleg);
 beleg.faktor:=beleg.faktor/float;
 end;
 
-function streckung.gefiltert (posi:longint):sample;
+function streckung.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=round(next^.gefiltert(posi)*float);
 end;
@@ -846,7 +901,7 @@ begin
 name:='Clip';
 end;
 
-function kappen.gefiltert(posi:longint):sample;
+function kappen.gefiltert(posi:grossint):sample;
 var   wert:sample;
 begin
 wert:=next^.gefiltert(posi);
@@ -881,16 +936,97 @@ filter.einheitgenerieren(beleg);
 beleg.faktor:=beleg.faktor*2;
 end;
 
-function addition.gefiltert (posi:longint):sample;
+function addition.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=(next^.gefiltert(posi)+dat(posi,adk)) div 2;
+end;
+
+{ x-y-Betrag }
+
+constructor betrag.neu (kanal2:byte);
+begin
+k2:=kanal2;
+name:='³(x Chan.'+wort(k2)+')³';
+end;
+
+constructor betrag.load (var s:tbufstream);
+begin
+filter.load(s);
+s.read(k2,1);
+end;
+
+procedure betrag.store (var s:tbufstream);
+begin
+filter.store(s);
+s.write(k2,1);
+end;
+
+procedure betrag.einheitgenerieren (var beleg:belegung);
+begin
+filter.einheitgenerieren(beleg);
+beleg.negativ:=false;
+end;
+
+function betrag.gefiltert (posi:grossint):sample;
+var ys,zs:extended;
+begin
+ys:=next^.gefiltert(posi);
+zs:=dat(posi,k2);
+gefiltert:=round(sqrt(ys*ys+zs*zs));
+end;
+
+{ Winkel }
+
+constructor winkel.neu (xkanal:byte);
+begin
+xk:=xkanal;
+name:='(y) Angle (x=#'+wort(xk)+')';
+end;
+
+constructor winkel.load (var s:tbufstream);
+begin
+filter.load(s);
+s.read(xk,1);
+end;
+
+procedure winkel.store (var s:tbufstream);
+begin
+filter.store(s);
+s.write(xk,1);
+end;
+
+procedure winkel.einheitgenerieren (var beleg:belegung);
+begin
+filter.einheitgenerieren(beleg);
+with beleg do begin
+   faktor:=pi/maxsample;
+   negativ:=true;
+   anfang:='rad';
+   sekunde:=0;
+   end;
+end;
+
+function winkel.gefiltert (posi:grossint):sample;
+const fak=maxsample/pi;
+      halb=round(fak*pi);
+var x,y:sample;
+    winkel:sample;
+begin
+x:=dat(posi,xk);
+y:=next^.gefiltert(posi);
+if (x=0) and (y=0) then winkel:=minsample
+   else if abs(x)>abs(y) then
+            if (y>=0)=(x>=0) then winkel:=round(arctan(y/x)*fak)
+                             else winkel:=round((arctan(y/x)+pi)*fak)
+            else winkel:=round((pi/2-arctan(x/y))*fak);
+if y<0 then gefiltert:=winkel-halb else gefiltert:=winkel;
 end;
 
 { absolut }
 
 constructor absolut.neu;
 begin
-name:='³y³';
+name:='³x³';
 end;
 
 procedure absolut.einheitgenerieren (var beleg:belegung);
@@ -899,7 +1035,7 @@ filter.einheitgenerieren(beleg);
 beleg.negativ:=false;
 end;
 
-function absolut.gefiltert (posi:longint):sample;
+function absolut.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=abs(next^.gefiltert(posi));
 end;
@@ -908,7 +1044,7 @@ end;
 
 constructor square.neu;
 begin
-name:='yý';
+name:='xý';
 end;
 
 procedure square.einheitgenerieren (var beleg:belegung);
@@ -918,7 +1054,7 @@ with beleg do begin
    negativ:=false; faktor:=sqr(faktor)*maxsample; schwierigda:=true end;
 end;
 
-function square.gefiltert (posi:longint):sample;
+function square.gefiltert (posi:grossint):sample;
 var xs:extended;
 begin
 xs:=next^.gefiltert(posi);
@@ -932,11 +1068,11 @@ begin
 breitefilter.neu(breims); name:='Gl.Avg. '#29+extwort(brei,3,1)+'ms';
 end;
 
-function glatt.gefiltert (posi:longint):sample;
-var   i:longint;
+function glatt.gefiltert (posi:grossint):sample;
+var   i:grossint;
       sum:extended;
 begin
-sum:=0; for i:=posi-breianz2 to posi+breianz2 do sum:=sum+next^.gefiltert(i);
+sum:=0; i:=posi-breianz2; while i<=posi+breianz2 do begin sum:=sum+next^.gefiltert(i); inc(i) end;
 gefiltert:=round(sum/breianz);
 end;
 
@@ -971,17 +1107,19 @@ with beleg do begin
    end;
 end;
 
-function korrelation.gefiltert (posi:longint):sample;
-var   i:longint;
+function korrelation.gefiltert (posi:grossint):sample;
+var   i:grossint;
       x,y,sx,sy,sxq,syq,sxy:extended;
 begin
 sx:=0; sy:=0; sxq:=0; syq:=0; sxy:=0;
-for i:=-breianz2 to +breianz2 do begin
+i:=-breianz2;
+while i<=+breianz2 do begin
    x:=next^.gefiltert(posi+i);
    y:=dat(posi+i,kk);
    sx:=sx+x; sy:=sy+y;
    sxq:=sxq+x*x; syq:=syq+y*y;
    sxy:=sxy+x*y;
+   inc(i);
    end;
 if (sxq<1e-40) and (syq<1e-40) then gefiltert:=maxsample
                                else
@@ -990,7 +1128,7 @@ end;
 
 { passfilter }
 
-procedure passfilter.neu (grenzfreq:longint);
+procedure passfilter.neu (grenzfreq:grossint);
 begin
 gr:=grenzfreq; name:=wort(gr)+'Hz'; new(spaltgr);
 end;
@@ -1007,7 +1145,7 @@ filter.store(s);
 s.write(gr,sizeof(gr));
 end;
 
-function passfilter.gefiltert (posi:longint):sample;
+function passfilter.gefiltert (posi:grossint):sample;
 var   i:-weite..weite;  sum:extended;
 begin
 sum:=0;
@@ -1020,7 +1158,7 @@ begin
 dispose(spaltgr);
 end;
 
-constructor tiefpass.neu (grenzfreq:longint);
+constructor tiefpass.neu (grenzfreq:grossint);
 begin
 passfilter.neu(grenzfreq);
 name:='LP '+name;
@@ -1034,7 +1172,7 @@ fak:=gr/frequenz; we:=min(round(genau*pi/fak),weite);
 spaltgr^[0]:=fak/pi; for j:=1 to we do spaltgr^[j]:=sin(j*fak)/j/pi;
 end;
 
-constructor hochpass.neu (grenzfreq:longint);
+constructor hochpass.neu (grenzfreq:grossint);
 begin
 passfilter.neu(grenzfreq);
 name:='HP '+name;
@@ -1071,7 +1209,7 @@ end;
 procedure diff.vorbereitung (frequenz:extended);
 begin end;
 
-function diff.gefiltert (posi:longint):sample;
+function diff.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=round((next^.gefiltert(posi+1)-next^.gefiltert(posi-1))*diffaktor);
 end;
@@ -1094,13 +1232,17 @@ begin
 posiwert:=0; gefiltertwert:=0;
 end;
 
-function int.gefiltert (posi:longint):sample;
-var  i:longint;
+function int.gefiltert (posi:grossint):sample;
+var  i:grossint;
 begin
-if posi<posiwert then
-    for i:=posi+1 to posiwert do dec(gefiltertwert,next^.gefiltert(i))
-                 else
-    for i:=posiwert+1 to posi do inc(gefiltertwert,next^.gefiltert(i));
+if posi<posiwert then begin
+    i:=posi+1;
+    while i<=posiwert do begin dec(gefiltertwert,next^.gefiltert(i)); inc(i) end
+    end
+                 else begin
+    i:=posiwert+1;
+    while i<=posi do begin inc(gefiltertwert,next^.gefiltert(i)); inc(i) end
+    end;
 posiwert:=posi;
 gefiltert:=gefiltertwert;
 end;
@@ -1124,17 +1266,25 @@ breitefilter.vorbereitung(frequenz);
 posiwert:=-breianz2-2; gefiltertwert:=0;
 end;
 
-function glint.gefiltert (posi:longint):sample;
-var  i:longint;
+function glint.gefiltert (posi:grossint):sample;
+var  i:grossint;
 begin
-if posi<posiwert then
-    for i:=posi+1 to posiwert do
+if posi<posiwert then begin
+    i:=posi+1;
+    while i<=posiwert do begin
         dec(gefiltertwert,next^.gefiltert(i+breianz2)
-                         -next^.gefiltert(i-breianz2))
-                 else
-    for i:=posiwert+1 to posi do
+                         -next^.gefiltert(i-breianz2));
+        inc(i)
+        end
+    end
+                 else begin
+    i:=posiwert+1;
+    while i<=posi do begin
         inc(gefiltertwert,next^.gefiltert(i+breianz2)
                          -next^.gefiltert(i-breianz2));
+        inc(i)
+        end
+    end;
 posiwert:=posi;
 gefiltert:=gefiltertwert;
 end;
@@ -1158,21 +1308,29 @@ breitefilter.vorbereitung(frequenz);
 posiwert:=-breianz2-2; gefiltertwert:=0;
 end;
 
-function gllin.gefiltert (posi:longint):sample;
-var  i:longint;
+function gllin.gefiltert (posi:grossint):sample;
+var  i:grossint;
 begin
-if posi<posiwert then
-    for i:=posi+1 to posiwert do
+if posi<posiwert then begin
+    i:=posi+1;
+    while i<=posiwert do begin
         dec(gefiltertwert,abs(next^.gefiltert(i+breianz2)
                              -next^.gefiltert(i+breianz2-1))
                          -abs(next^.gefiltert(i-breianz2)
-                             -next^.gefiltert(i-breianz2-1)))
-                 else
-    for i:=posiwert+1 to posi do
+                             -next^.gefiltert(i-breianz2-1)));
+        inc(i)
+        end
+    end
+                  else begin
+    i:=posiwert+1;
+    while i<=posi do begin
         inc(gefiltertwert,abs(next^.gefiltert(i+breianz2)
                              -next^.gefiltert(i+breianz2-1))
                          -abs(next^.gefiltert(i-breianz2)
                              -next^.gefiltert(i-breianz2-1)));
+        inc(i)
+        end
+    end;
 posiwert:=posi;
 gefiltert:=gefiltertwert;
 end;
@@ -1201,7 +1359,7 @@ begin
 posid:=round(um*frequenz/1000);
 end;
 
-function verschiebe.gefiltert (posi:longint):sample;
+function verschiebe.gefiltert (posi:grossint):sample;
 begin
 gefiltert:=next^.gefiltert(posi+posid);
 end;
@@ -1235,18 +1393,93 @@ begin
 br2:=round(brei*frequenz/2000);
 end;
 
-function maxmin.gefiltert (posi:longint):sample;
-var   i:longint;
+function maxmin.gefiltert (posi:grossint):sample;
+var   i:grossint;
       wert,wertmin,wertmax:minsample-1..maxsample+1;
 begin
 wertmax:=minsample-1; wertmin:=maxsample+1;
-for i:=posi-br2 to posi+br2 do begin
+i:=posi-br2;
+while i<=posi+br2 do begin
    wert:=next^.gefiltert(i);
    if wert>wertmax then wertmax:=wert;
    if wert<wertmin then wertmin:=wert;
+   inc(i)
    end;
 gefiltert:=(wertmax-wertmin) div 2;
 end;
+
+{ Digitalfilter }
+
+constructor digital.neu (k:byte; schwelle:sample; neinheit:string; nwert:extended);
+begin
+schw:=schwelle;
+neueeinheit:=neinheit;
+neuerwert:=nwert;
+name:='Pulse counter '+extwort(schw*belegungsliste[k].faktor,3,2)
+      +belegungsliste[k].einhwort+' ('+extwort(neuerwert,5,3)+' '+neueeinheit+')';
+end;
+
+procedure digital.einheitgenerieren(var beleg:belegung);
+begin
+inherited einheitgenerieren(beleg);
+with beleg do begin
+   faktor:=neuerwert*fre/maxsample/2;
+   anfang:=neueeinheit;
+   sekunde:=-1;
+   negativ:=true;
+   end;
+end;
+
+procedure digital.vorbereitung (frequenz:extended);
+begin
+posilinkswert:=0; posirechtswert:=0; gefiltertwert:=0;
+end;
+
+constructor digital.load (var s:tbufstream);
+begin
+filter.load(s);
+s.read(schw,sizeof(sample));
+s.read(neueeinheit,sizeof(neueeinheit));
+s.read(neuerwert,sizeof(neuerwert));
+end;
+
+procedure digital.store (var s:tbufstream);
+begin
+filter.store(s);
+s.write(schw,sizeof(sample));
+s.write(neueeinheit,sizeof(neueeinheit));
+s.write(neuerwert,sizeof(neuerwert));
+end;
+
+function digital.gefiltert (posi:grossint):sample;
+var li,re,minli,maxre:grossint;
+begin
+if (posi>=posilinkswert) and (posi<posirechtswert) then
+   gefiltert:=gefiltertwert
+                                                   else begin
+   li:=posi; re:=posi;
+   minli:=posi-100000; maxre:=posi+100000;
+   while (abs(next^.gefiltert(li))<schw) and (li>=minli) do dec(li);
+   while abs(next^.gefiltert(li))>schw do dec(li); inc(li);
+   while abs(next^.gefiltert(re))>schw do inc(re);
+   while (abs(next^.gefiltert(re))<schw) and (re<=maxre) do inc(re);
+   if (li<=minli) or (re>maxre) then begin
+    gefiltert:=0;
+    gefiltertwert:=0; posilinkswert:=li; posirechtswert:=re;
+    end
+    else begin
+      if (next^.gefiltert(li)>0) and (next^.gefiltert(re)>0)
+         then gefiltertwert:=round(maxsample/(re-li)*2)
+           else if (next^.gefiltert(li)<0) and (next^.gefiltert(re)<0)
+                  then gefiltertwert:=round(maxsample/(li-re)*2)
+                  else gefiltertwert:=0;
+      gefiltert:=gefiltertwert;
+      posilinkswert:=li; posirechtswert:=re;
+      end;
+   end;
+end;
+
+{ Spikefilter }
 
 constructor spikefilter.neu (k:byte; millisek,ablinks,abrechts:extended);
 var    ableitungein:einheittyp;
@@ -1281,9 +1514,9 @@ abstre:=round(abre*fre/frequenz);
 anz:=min(round(ms*frequenz/1000),spikemax);
 end;
 
-function spikefilter.gefiltert (posi:longint):sample;
+function spikefilter.gefiltert (posi:grossint):sample;
 label weiter;
-var   bei,bei2,bis:integer;
+var   bei,bei2,bis:longint;
       mitte:array[-spikemax..spikemax] of sample;
 begin
 for bei:=-anz to anz do mitte[bei]:=next^.gefiltert(posi+bei);
@@ -1397,7 +1630,7 @@ for i:=kan to kan+filtermax-1 do begin
    end;
 end;
 
-function dat (posi:longint; k:byte):sample;
+function dat (posi:grossint; k:byte):sample;
 begin
 if k<kan then dat:=lesef(posi,k)
          else dat:=filteranfang[k]^.gefiltert(posi);
@@ -1408,7 +1641,7 @@ begin
 extspannung:=y*belegungsliste[kanal].faktor
 end;
 
-function spannung (y:extended; kanal:byte):longint;
+function spannung (y:extended; kanal:byte):grossint;
 begin
 spannung:=round(extspannung(y,kanal));
 end;
@@ -1446,7 +1679,8 @@ registertype(rsquare);       registertype(rglatt);         registertype(rtiefpas
 registertype(rhochpass);     registertype(rdiff);          registertype(rverschiebe);
 registertype(rmaxmin);       registertype(rspikefilter);   registertype(reinsdurch);
 registertype(rglint);        registertype(rgllin);         registertype(rkorrelation);
-registertype(rarcsin);       registertype(rarccos);
+registertype(rarcsin);       registertype(rarccos);        registertype(rdigital);
+registertype(rwinkel);       registertype(rbetrag);
 
 for i:=1 to maxkanal-1 do filteranfang[i]:=new(endezg,neu(0));
 end.

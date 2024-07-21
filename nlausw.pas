@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0}
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 unit nlausw;
 
@@ -16,7 +16,7 @@ uses  crt,      graph,    daff,wavpcm,tulab42,  nlrahmen,
                 nlgrafik;
 
 type  statistik=object
-         n:longint;
+         n:grossint;
          sx,ssqrx:extended;
          mx,rox:extended;
          constructor init;
@@ -25,7 +25,7 @@ type  statistik=object
          end;
 
       phasenstatistik=object
-         n:longint;
+         n:grossint;
          sx,sy:extended;
          mph,lvek:extended;
          constructor init;
@@ -35,7 +35,7 @@ type  statistik=object
 
       ampnormalhistogramm=object (grafikamplitude)
          tstat:statistik;
-         gesamt:longint;
+         gesamt:grossint;
          procedure berechnen; virtual;
          procedure bild; virtual;
          procedure plot (gr:byte); virtual;
@@ -45,30 +45,30 @@ type  statistik=object
       grafikaverage=object (grafikmittel)
          hoehe:array[1..maxkanal+1] of sample;
          maxi:array[1..maxkanal+1] of wert;
-         maxix:array[1..maxkanal+1] of longint;
+         maxix:array[1..maxkanal+1] of grossint;
          flaeche:array[1..maxkanal+1] of wert;
          procedure berechnen; virtual;
          procedure bild; virtual;
          procedure plot (gr:byte); virtual;
          constructor aufbauen(var kan:kanalmenge; anf,dau:messwert;
-                              trl:char; trp:longint);
+                              trl:char; trp:grossint);
          end;
 
       grafikphasenaverage=object (grafikmittel)
          triggweis:triggerweiser;
          hoehe:array[1..maxkanal+1] of sample;
          maxi:array[1..maxkanal+1] of wert;
-         maxix:array[1..maxkanal+1] of longint;
+         maxix:array[1..maxkanal+1] of grossint;
          flaeche:array[1..maxkanal+1] of wert;
          procedure berechnen; virtual;
          procedure bild; virtual;
          procedure plot (gr:byte); virtual;
          constructor aufbauen(var kan:kanalmenge; anf,dau:messwert;
-                              trl:char; trp:longint; var weis:triggerweiser);
+                              trl:char; trp:grossint; var weis:triggerweiser);
          end;
 
       intervallhistogramm=object (grafikintervall)
-         gesamt:longint;
+         gesamt:grossint;
          tstat:statistik;
          procedure berechnen; virtual;
          procedure bild; virtual;
@@ -78,7 +78,7 @@ type  statistik=object
          end;
 
       autokorrelogramm=object (grafikintervall)
-         gesamt:longint;
+         gesamt:grossint;
          tstat:statistik;
          procedure berechnen; virtual;
          procedure bild; virtual;
@@ -89,7 +89,7 @@ type  statistik=object
 
       kreuzkorrelogramm=object (grafikintervall)
          obj:char;
-         refn,objn:longint;
+         refn,objn:grossint;
          nstat,tstat:statistik;
          procedure berechnen; virtual;
          procedure bild; virtual;
@@ -101,7 +101,7 @@ type  statistik=object
       psthistogramm=object (grafikintervall)
          obj:char;
          anfph,endph:shortint;
-         refn,objn:longint;
+         refn,objn:grossint;
          nstat,tstat:statistik;
          procedure berechnen; virtual;
          procedure bild; virtual;
@@ -112,7 +112,7 @@ type  statistik=object
 
       latenzhistogramm=object (grafikintervall)
          obj:char;
-         refn:longint;
+         refn:grossint;
          tstat:statistik;
          procedure berechnen; virtual;
          procedure bild; virtual;
@@ -123,7 +123,7 @@ type  statistik=object
 
       phasenhistogramm=object (grafikphasenintervall)
          obj:char;
-         refn,objn:longint;
+         refn,objn:grossint;
          weis:triggerweiser;
          nstat:statistik;
          phstat:phasenstatistik;
@@ -201,7 +201,7 @@ end;
 procedure rauschen (var feld:mittelfeld; dauer:messwert; var hoehe:sample);
 const breite=16;
       faktor=maxsample/5000;
-var   verteilung:array[-5000..5000] of longint;
+var   verteilung:array[-5000..5000] of grossint;
       i,j,wol,wor,gesamt,bisher,jetzt:longint;
 begin
 fillchar(verteilung,sizeof(verteilung),0);
@@ -224,7 +224,7 @@ end;
 
 procedure ampnormalhistogramm.berechnen;
 var   um:extended;
-      tpr:longint;
+      tpr:exword;
       ywert:extended;
       nr:byte;
 begin
@@ -239,7 +239,7 @@ for nr:=1 to filenr do with tliste[ref]^.fil[nr] do begin
    oeffnen(nr);
    for tpr:=1 to automn do begin
       ywert:=dat(zwi(autom^[tpr]),xkanal);
-      if (ywert<maxsamp) and (ywert>minsamp) then begin
+      if (kon(ywert,xkanal)<maxsamp+klasse) and (kon(ywert,xkanal)>minsamp-klasse) then begin
          tstat.dazu(ywert);
          incex(diff^[trunc((kon(ywert,xkanal)-minsamp)/klasse)+1],um);
          end;
@@ -294,12 +294,12 @@ tptot:=0;
 for nr:=1 to filenr do with tliste[tl]^.fil[nr] do
   if automda then begin
    write(#13); clreol;
-   write('Averaging: ',liste[nr].name,', trigger point no. (total):');
+   write('Averaging: ',liste[nr].name,', total trigger point no.:');
    oeffnen(nr);
    for tp:=1 to automn do begin
       for j:=0 to maxkanal do if j in kanaele.dabei then for i:=0 to rdauer do
          mittel[j]^[i]:=mittel[j]^[i]+dat(zwi(autom^[tp]+anfang+i),j);
-      inc(tptot); write(tp:5,'(',tptot:7,')',#8#8#8#8#8#8#8#8#8#8#8#8#8#8);
+      inc(tptot); if (tptot mod 128) = 0 then write(tptot:9,#8#8#8#8#8#8#8#8#8);
       if keypressed and (readkey=#27) then begin abbruch:=true; exit end;
       end;
    schliesse;
@@ -374,7 +374,7 @@ with kanaele do begin
 end;
 
 constructor grafikaverage.aufbauen(var kan:kanalmenge;anf,dau:messwert;
-                                   trl:char; trp:longint);
+                                   trl:char; trp:grossint);
 begin
 grafikmittel.aufbauen(kan,anf,dau,trl,trp);
 end;
@@ -389,7 +389,7 @@ with triggweis, tliste[tl]^ do begin
    tptot:=0;
    for nr:=1 to filenr do with weisliste[nr], fil[nr] do if automda then begin
       write(#13); clreol;
-      write('Averaging: ',liste[nr].name,', trigger point no.:');
+      write('Averaging: ',liste[nr].name,', total trigger point no.:');
       oeffnen(nr);
       for tp:=1 to n do begin
          abst:=autom^[t^[tp]+1]-autom^[t^[tp]];
@@ -397,7 +397,7 @@ with triggweis, tliste[tl]^ do begin
          for j:=0 to maxkanal do if j in kanaele.dabei then
           for i:=0 to rdauer do
            mittel[j]^[i]:=mittel[j]^[i]+dat(zwi(autom^[t^[tp]]+(anfang+i)/dehnfaktor),j);
-         inc(tptot); write(tp:5,'(',tptot:7,')',#8#8#8#8#8#8#8#8#8#8#8#8#8#8);
+         inc(tptot); if (tptot mod 128) = 0 then write(tptot:9,#8#8#8#8#8#8#8#8#8);
          if keypressed and (readkey=#27) then begin abbruch:=true; exit end;
          end;
       schliesse;
@@ -473,7 +473,7 @@ with kanaele do begin
 end;
 
 constructor grafikphasenaverage.aufbauen(var kan:kanalmenge;anf,dau:messwert;
-                                         trl:char; trp:longint; var weis:triggerweiser);
+                                         trl:char; trp:grossint; var weis:triggerweiser);
 begin
 triggweis:=weis;
 grafikmittel.aufbauen(kan,anf,dau,trl,trp);
@@ -542,7 +542,7 @@ end;
 procedure autokorrelogramm.berechnen;
 var   um:extended;
       tpr,tpo:longint;
-      tpol,tpor,dum:word;
+      tpol,tpor,dum:exword;
       d:messwert;
       nr:byte;
 begin
@@ -565,7 +565,7 @@ with tliste[ref]^ do for nr:=1 to filenr do with fil[nr] do
          tstat.dazu(d);
          incex(diff^[trunc((d-anfang)/klasse)+1],um);
          end;
-      write(tpr:6,#8#8#8#8#8#8);
+      if (tpr mod 128) = 0 then write(tpr:7,#8#8#8#8#8#8#8);
       end;
    end;
 tstat.rechnen;
@@ -605,7 +605,7 @@ end;
 procedure kreuzkorrelogramm.berechnen;
 var   um:extended;
       tpr,tpo:longint;
-      tpol,tpor,dum:word;
+      tpol,tpor,dum:exword;
       d:messwert;
       nr:byte;
 begin
@@ -630,7 +630,7 @@ for nr:=1 to filenr do if tliste[ref]^.fil[nr].automda then
          tstat.dazu(d);
          incex(diff^[trunc((d-anfang)/klasse)+1],um);
          end;
-      write(tpr:6,#8#8#8#8#8#8);
+      if (tpr mod 128) = 0 then write(tpr:7,#8#8#8#8#8#8#8);
       end;
    end;
 nstat.rechnen; tstat.rechnen;
@@ -674,7 +674,7 @@ procedure psthistogramm.berechnen;
 var   um:extended;
       nr:byte;
 procedure durchzaehlen (var refliste,objliste:triggerdaten);
-var   tpol1,tpol2,tpor1,tpor2,tpol,tpor,dum:word;
+var   tpol1,tpol2,tpor1,tpor2,tpol,tpor,dum:exword;
       tpr,tpo:longint;
       d:messwert;
 begin
@@ -690,7 +690,7 @@ for tpr:=1 to refliste.automn do begin
       tstat.dazu(d);
       incex(diff^[trunc((d-anfang)/klasse)+1],um);
       end;
-   write(tpr:6,#8#8#8#8#8#8);
+   if (tpr mod 128) = 0 then write(tpr:7,#8#8#8#8#8#8#8);
    end;
 end;
 
@@ -747,7 +747,7 @@ end;
 procedure latenzhistogramm.berechnen;
 var   um:extended;
       tpr:longint;
-      tpo,dum:word;
+      tpo,dum:exword;
       d:messwert;
       nr:byte;
 begin
@@ -769,7 +769,7 @@ for nr:=1 to filenr do if tliste[ref]^.fil[nr].automda then
          tstat.dazu(d);
          incex(diff^[trunc((d-anfang)/klasse)+1],um);
          end;
-      write(tpr:6,#8#8#8#8#8#8);
+      if (tpr mod 128) = 0 then write(tpr:7,#8#8#8#8#8#8#8);
       end;
    end;
 tstat.rechnen;
@@ -813,7 +813,7 @@ end;
 procedure phasenhistogramm.berechnen;
 var   mklasse,um,faktor:extended;
       tpr,tpo,versch:longint;
-      tpol,tpor,dum:word;
+      tpol,tpor,dum:exword;
       nr:byte;
       abst,d:messwert;
 begin
@@ -828,7 +828,6 @@ um:=1/weis.gesamt;
 for nr:=1 to filenr do
   with tliste[ref]^.fil[nr], weis.weisliste[nr] do if automda then begin
    write(#13); clreol;
-   write('Processing: ',liste[nr].name,', trigger point no.:');
    for tpr:=1 to n do begin
       abst:=autom^[t^[tpr]+1]-autom^[t^[tpr]];
       faktor:=weis.mittelabstand/abst;
@@ -842,7 +841,6 @@ for nr:=1 to filenr do
        if phasentest(d/abst,anfphase,dauerphase) then phstat.dazu(d/abst*2*pi);
        incex(diff^[(trunc(faktor*d/mklasse)-versch+diffnganz) mod diffnganz +1],um);
        end;
-      write(t^[tpr]:6,#8#8#8#8#8#8);
       end;
    end;
 nstat.rechnen; phstat.rechnen;

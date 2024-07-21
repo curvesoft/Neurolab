@@ -1,6 +1,8 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 unit  nlrahmen;
+
+{$ifdef fpc} {$ifndef ide} {$R *.res} {$endif} {$endif}
 
 {$IFDEF MSDOS}
 {$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X-}
@@ -10,7 +12,7 @@ unit  nlrahmen;
 
 interface
 
-uses  {$ifdef windows} wincrt, {$else} crt,{$endif}
+uses  crt,
       bequem,tlfilter,tlfiles;
 
 const farbenormal=lightgray;
@@ -89,8 +91,8 @@ begin
 anz:=a;
 writeln('Channel':5,'Filters':12);
 zn:=wherey+hi(windmin); index:=i;
-weiterzeigen;
 gotoxy(1,wherey+anz);
+weiterzeigen;
 end;
 
 procedure filterliste.weiterzeigen;
@@ -111,7 +113,7 @@ while not ende do begin
       end;
    inc(index);
    end;
-voll:windmin:=windminalt; windmax:=windmaxalt;
+voll:window(lo(windminalt)+1,hi(windminalt)+1,lo(windmaxalt)+1,hi(windmaxalt)+1);
 gotoxy(wx,wy);
 if ende then index:=kan;
 end;

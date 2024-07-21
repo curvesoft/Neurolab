@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0  / FPC 2.0 }
 
 unit daff;
 
@@ -10,8 +10,7 @@ unit daff;
 
 interface
 
-uses   {$ifdef windows} wincrt, windos, dostowin,
-       {$else} crt, dos, objects, {$endif}
+uses   crt, dos, objects,
        bequem;
 
 const  samplebit=25;
@@ -22,16 +21,16 @@ const  samplebit=25;
        dafftypen:set of 0..23 = [4,6,7,19];
 
 type   sample=minsample..maxsample;
-       kanaldef=record
+       kanaldef=packed record
           nr:word;            name:string[12];
           offs:byte;          faktor1,faktor2:extended;
           einheit:string[12];
           dattyp,bits:byte;
           end;
-       kopfdaten=record
+       kopfdaten=packed record
           produzent:string20;
           datum:string20;     uhrzeit:string20;   freq:extended;
-          kennung:string[64]; anzahl:longint;     kopfbytes:longint;
+          kennung:string[64]; anzahl:grossint;     kopfbytes:grossint;
           gesdattyp:byte;     bytes:byte;
           nkan:byte;          k:array[0..maxkan-1] of kanaldef;
           end;
@@ -89,7 +88,7 @@ type   sample=minsample..maxsample;
        pdate=^tdate;
 
        tival   =object (tag)
-          li:longint;
+          li:grossint;
           constructor lesen;
           end;
        pival=^tival;
@@ -124,7 +123,7 @@ type   sample=minsample..maxsample;
           end;
        pdatadef=^tdatadef;
        tblksize=object (tag)
-          li:longint;
+          li:grossint;
           constructor lesen;
           procedure einordnen (var ko:kopfdaten); virtual;
           end;
@@ -134,7 +133,7 @@ type   sample=minsample..maxsample;
           constructor lesen;
           end;
        tsrcoffs=object (tag)
-          li:longint;
+          li:grossint;
           constructor lesen;
           end;
        tsrctyp =object (tag)
@@ -185,7 +184,7 @@ type   sample=minsample..maxsample;
        psfrq=^tsfrq;
 
        tschluss=object (context)
-          kb,dl:longint;
+          kb,dl:grossint;
           constructor lesen;
           procedure einordnen (var ko:kopfdaten); virtual;
           end;
@@ -195,7 +194,7 @@ var    tulabfehler:boolean;
        hin:text;
 
 var    daten,seqdaten:file;
-       lesef:function(position:longint; kanal:byte):sample;
+       lesef:function(position:grossint; kanal:byte):sample;
 
 procedure kopflesen (name:string80; var anfang:contextzeiger);
 procedure kopfzeigen (anfang:tagzeiger; var hin:text);
@@ -210,34 +209,34 @@ procedure seqschliesse;
 
 implementation
 
-const  puffermax=65534;
+const  {$ifdef fpc} puffermax=1 shl 26; {$else} puffermax=65534; {$endif}
        zustand:(offen,zu,aus)=zu;
        leerkd:kanaldef=(nr:0; name:''; offs:0; faktor1:1/maxsample;
                         faktor2:1; einheit:'V'; dattyp:0; bits:0);
        leerk:kopfdaten=(produzent:'Unbekannt'; datum:''; uhrzeit:''; freq:0;
                         kennung:''; anzahl:0; kopfbytes:0; gesdattyp:0; bytes:0; nkan:0);
 
-type   pufferbyte=array[0..puffermax-1] of byte;
-       daffheader=record
-          swg:array[1..10] of char;        sex:word;
+type   pufferbyte=packed array[0..puffermax-1] of byte;
+       daffheader=packed record
+          swg:packed array[1..10] of char; sex:word;
           version:word;                    flags:word;
-          size:longint;                    res:array[1..8] of char;
+          size:grossint;                    res:array[1..8] of char;
           end;
 
 var    s:tbufstream;
        pufferb,seqpufferb:^pufferbyte;
-       pufferbyteanfang,pufferbyteende,seqbytei:longint;
-       kopfbytelaenge, filebyteende:longint;
+       pufferbyteanfang,pufferbyteende,seqbytei:grossint;
+       kopfbytelaenge, filebyteende:grossint;
        kan, blbytes:byte;
        koffs:array[0..maxkan-1] of byte;
-       kshift:array[0..maxkan-1] of longint;
+       kshift:array[0..maxkan-1] of grossint;
 
-function lesenil(position:longint; kanal:byte):sample; far; forward;
-function lese4  (position:longint; kanal:byte):sample; far; forward;
-function lese6  (position:longint; kanal:byte):sample; far; forward;
-function lese7  (position:longint; kanal:byte):sample; far; forward;
-function lese19 (position:longint; kanal:byte):sample; far; forward;
-const lesefliste:array[0..23] of function(position:longint; kanal:byte):sample
+function lesenil(position:grossint; kanal:byte):sample; far; forward;
+function lese4  (position:grossint; kanal:byte):sample; far; forward;
+function lese6  (position:grossint; kanal:byte):sample; far; forward;
+function lese7  (position:grossint; kanal:byte):sample; far; forward;
+function lese19 (position:grossint; kanal:byte):sample; far; forward;
+const lesefliste:array[0..23] of function(position:grossint; kanal:byte):sample
           =(lesenil,lesenil,lesenil,lesenil,lese4  ,lesenil,lese6  ,lese7,
             lesenil,lesenil,lesenil,lesenil,lesenil,lesenil,lesenil,lesenil,
             lesenil,lesenil,lesenil,lese19 ,lesenil,lesenil,lesenil,lesenil);
@@ -245,9 +244,9 @@ const lesefliste:array[0..23] of function(position:longint; kanal:byte):sample
 
 { Prozeduren }
 
-procedure neu (var now:tagzeigerzeiger; tg:tagzeiger);
+procedure neu (var nowvarvar:tagzeigerzeiger; tg:tagzeiger);
 begin
-now^:=tg; now:=@now^^.next;
+nowvarvar^:=tg; nowvarvar:=@nowvarvar^^.next;
 end;
 
 procedure skiptag;
@@ -283,25 +282,27 @@ end;
 
 procedure kopflesen (name:string80; var anfang:contextzeiger);
 label ende;
+var swgstring:packed array[1..10] of char;
 var id:word;
-    now:tagzeigerzeiger;
+    nowvar:tagzeigerzeiger;
     dh:daffheader;
 begin
+swgstring:='SWGBSMBWS'#0;
 tulabfehler:=false;
 s.init(name,stopenread,32000);
 s.read(dh,28);
-if dh.swg<>'SWGBSMBWS'#0 then begin
+if dh.swg<>swgstring then begin
    fehler('No Turbolab-format file.');
    tulabfehler:=true;
    s.done; exit end;
-now:=@anfang;
+nowvar:=@anfang;
 repeat
    s.read(id,2);
       case id of
       $0000..$7FFF:tulabfehler:=true;
-      $8002:neu(now,new(pheader,lesen));
-      $8003:neu(now,new(pdatadef,lesen));
-      $8005:neu(now,new(pchanl,lesen));
+      $8002:neu(nowvar,new(pheader,lesen));
+      $8003:neu(nowvar,new(pdatadef,lesen));
+      $8005:neu(nowvar,new(pchanl,lesen));
       $8006..$FFFE:skipcontext;
       $8004{Daten}:goto ende;
       $FFFF:tulabfehler:=true;
@@ -311,7 +312,7 @@ repeat
       fehler('Incorrect Turbolab 4.2 - Header.'); goto ende end;
 until false;
 
-ende:neu(now,new(pschluss,lesen)); now^:=nil; s.done;
+ende:neu(nowvar,new(pschluss,lesen)); nowvar^:=nil; s.done;
 end;
 
 procedure kopfzeigen (anfang:tagzeiger; var hin:text);
@@ -349,9 +350,9 @@ if anfang<>nil then dispose(anfang,done);
 end;
 
 procedure oeffne (name:string80; var ko:kopfdaten);
-var   puf:array[0..1] of byte;
-      i:integer;
+var   i:integer;
 begin
+{if zustand=offen then begin fehler('Offen!'); warte; schliesse end;}
 kopfbytelaenge:=ko.kopfbytes; kan:=ko.nkan;
 blbytes:=ko.bytes;
 for i:=0 to kan do begin
@@ -360,14 +361,17 @@ for i:=0 to kan do begin
    end;
 lesef:=lesefliste[ko.gesdattyp];
 if zustand=aus then exit;
-assign(daten,name); reset(daten,1);
+filebyteende:=ko.anzahl*ko.bytes;
+assign(daten,name);
+{$ifdef fpc}
+if zustand=zu then zustand:=offen;
+{$else}
+reset(daten,1);
 tulabfehler:=ioresult>0;
-if not tulabfehler then begin
-   filebyteende:=ko.anzahl*ko.bytes;
-   zustand:=offen;
-   end
+if not tulabfehler then zustand:=offen
                    else begin
    writeln(lfcr); fehler('No access to file "'+name+'".'); warte end;
+{$endif}
 pufferbyteanfang:=0;  pufferbyteende:=0;
 end;
 
@@ -382,20 +386,25 @@ end;
 procedure seqschliesse;
 var   lenpuffer:word;
 begin
-if seqbytei>=0 then blockwrite(seqdaten,seqpufferb^,seqbytei+1,lenpuffer);
+if seqbytei>=0 then blockwrite(seqdaten,seqpufferb^,seqbytei+2,lenpuffer);
 close(seqdaten);
 dispose(seqpufferb);
 end;
 
 procedure schliesse;
 begin
+{$ifdef fpc}
+if zustand=offen then zustand:=zu;
+{$else}
 if zustand=offen then begin
    close(daten);
    tulabfehler:=ioresult>0;
    if tulabfehler then begin
+      zustand:=zu;
       writeln(lfcr); fehler('No access to data file.'); warte end;
-   pufferbyteanfang:=0; pufferbyteende:=0;
    end;
+{$endif}
+pufferbyteanfang:=0; pufferbyteende:=0;
 end;
 
 procedure ausserbetrieb;
@@ -411,21 +420,28 @@ begin
 inc(seqbytei,2);
 intzeiger:=addr(seqpufferb^[seqbytei]);
 zahl:=(zahl+sampleoffset) shr sampleshift; intzeiger^:=zahl;
-if seqbytei>=puffermax-3 then begin
-   blockwrite(seqdaten,seqpufferb^,seqbytei+1,lenpuffer);
+if seqbytei+2>=puffermax-1 then begin
+   blockwrite(seqdaten,seqpufferb^,seqbytei+2,lenpuffer);
    seqbytei:=-2;
    end;
 end;
 
-procedure pufferlesen (byteposition:longint);
-var   anfang:longint;
-      lenpuffer:word;
+procedure pufferlesen (byteposition:grossint);
+var   anfang:grossint;
+      lenpuffer:exword;
 begin
 case richtung of
    vow:anfang:=byteposition;
    ruw:anfang:=max(byteposition+1-puffermax,0);
    mit:anfang:=max(byteposition+(1-puffermax) div 2,0);
    end;
+{$ifdef fpc}
+reset(daten,1);
+tulabfehler:=ioresult>0;
+if not tulabfehler then zustand:=offen
+                   else begin
+   writeln(lfcr); fehler('No access to data file.'); warte; exit end;
+{$endif}
 seek(daten,anfang+kopfbytelaenge);
 blockread(daten,pufferb^,puffermax,lenpuffer);
 tulabfehler:=ioresult>0;
@@ -438,18 +454,25 @@ if not tulabfehler then begin
    pufferbyteende:=byteposition+puffermax;
    zustand:=zu;
    fillchar(pufferb^,sizeof(pufferb^),#0);
-   exit end
+   end;
+{$ifdef fpc}
+close(daten);
+tulabfehler:=ioresult>0;
+if tulabfehler then begin
+   zustand:=zu;
+   writeln(lfcr); fehler('No access to data file.'); warte end;
+{$endif}
 end;
 
-function lesenil (position:longint; kanal:byte):sample;
+function lesenil (position:grossint; kanal:byte):sample;
 begin
 fehler('Internal data type error.');
 lesenil:=0;
 end;
 
-function lese4 (position:longint; kanal:byte):sample;
+function lese4 (position:grossint; kanal:byte):sample;
 var   puff:^byte;
-      byteposition:longint;
+      byteposition:grossint;
 begin
 byteposition:=position*blbytes+koffs[kanal];
 if (byteposition<pufferbyteanfang) or (byteposition>=pufferbyteende) then begin
@@ -461,9 +484,9 @@ puff:=addr(pufferb^[byteposition-pufferbyteanfang]);
 lese4:=puff^ shl kshift[kanal] - sampleoffset;
 end;
 
-function lese6 (position:longint; kanal:byte):sample;
+function lese6 (position:grossint; kanal:byte):sample;
 var   puff:^word;
-      byteposition:longint;
+      byteposition:grossint;
 begin
 byteposition:=position*blbytes+koffs[kanal];
 if (byteposition<pufferbyteanfang) or (byteposition+1>=pufferbyteende) then begin
@@ -475,9 +498,9 @@ puff:=addr(pufferb^[byteposition-pufferbyteanfang]);
 lese6:=puff^ shl kshift[kanal] - sampleoffset;
 end;
 
-function lese7 (position:longint; kanal:byte):sample;
-var   puff:^integer; puffl:longint;
-      byteposition:longint;
+function lese7 (position:grossint; kanal:byte):sample;
+var   puff:^integer; puffl:grossint;
+      byteposition:grossint;
 begin
 byteposition:=position*blbytes+koffs[kanal];
 if (byteposition<pufferbyteanfang) or (byteposition+1>=pufferbyteende) then begin
@@ -489,11 +512,11 @@ puff:=addr(pufferb^[byteposition-pufferbyteanfang]);
 lese7:=puff^ shl kshift[kanal];
 end;
 
-function lese19 (position:longint; kanal:byte):sample;
-const sshift:longint=10;
+function lese19 (position:grossint; kanal:byte):sample;
+const sshift:grossint=10;
       soffs =sampleoffset shr 4;
 var   puff:^integer;
-      byteposition:longint;
+      byteposition:grossint;
 begin
 byteposition:=position*blbytes+koffs[kanal];
 if (byteposition<pufferbyteanfang) or (byteposition+1>=pufferbyteende) then begin
@@ -609,7 +632,7 @@ tag.lesen;
 s.read(parm,8);
 case size of
    0..8:st:=parm;
-   8..255:s.read(st[1],((size +1) div 2)*2);
+   9..255:s.read(st[1],((size +1) div 2)*2);
    end;
 st[0]:=chr(size);
 end;
@@ -697,24 +720,24 @@ end;
 { theader }
 
 constructor theader.lesen;
-var   id:word; now:tagzeigerzeiger;
+var   id:word; nowvar:tagzeigerzeiger;
       parms:array[1..8] of char;
 begin
 tag.lesen;
 line:='Header:';
 s.read(parms,8);
-now:=@nested;
+nowvar:=@nested;
 repeat
    s.read(id,2);
    case id of
-      $0001:neu(now,new(pname,lesen));
-      $0002:neu(now,new(plabel,lesen));
-      $0003:neu(now,new(pdate,lesen));
-      $0080:neu(now,new(pftyp,lesen));
-      $0081:neu(now,new(pprod,lesen));
+      $0001:neu(nowvar,new(pname,lesen));
+      $0002:neu(nowvar,new(plabel,lesen));
+      $0003:neu(nowvar,new(pdate,lesen));
+      $0080:neu(nowvar,new(pftyp,lesen));
+      $0081:neu(nowvar,new(pprod,lesen));
       $0004..$007F,$0082..$7FFF:skiptag;
       $8000..$FFFE:skipcontext;
-      $FFFF:begin nopar; now^:=nil; exit end;
+      $FFFF:begin nopar; nowvar^:=nil; exit end;
       end;
 until false;
 end;
@@ -751,21 +774,21 @@ end;
 { tdatadef }
 
 constructor tdatadef.lesen;
-var   id:word; now:tagzeigerzeiger;
+var   id:word; nowvar:tagzeigerzeiger;
       parms:array[1..8] of char;
 begin
 tag.lesen;
 line:='Data definition:';
 s.read(parms,8);
-now:=@nested;
+nowvar:=@nested;
 repeat
    s.read(id,2);
    case id of
-      $0098:neu(now,new(pblksize,lesen));
+      $0098:neu(nowvar,new(pblksize,lesen));
       $0000..$0097,$0099..$7FFF:skiptag;
-      $8003:neu(now,new(pnestdatadef,lesen));
+      $8003:neu(nowvar,new(pnestdatadef,lesen));
       $8000..$8002,$8004..$FFFE:skipcontext;
-      $FFFF:begin nopar; now^:=nil; exit end;
+      $FFFF:begin nopar; nowvar^:=nil; exit end;
       end;
 if tulabfehler then exit;
 until false;
@@ -812,21 +835,21 @@ end; *)
 { tnestdatadef }
 
 constructor tnestdatadef.lesen;
-var   id:word; now:tagzeigerzeiger;
+var   id:word; nowvar:tagzeigerzeiger;
       parms:array[1..8] of char;
 begin
 tag.lesen;
 line:='  Channel data definition ['+wort(num)+']:';
 s.read(parms,8);
-now:=@nested;
+nowvar:=@nested;
 repeat
    s.read(id,2);
    case id of
-      $00A0:neu(now,new(pblkoffs,lesen));
-      $00A2:neu(now,new(pdatat,lesen));
+      $00A0:neu(nowvar,new(pblkoffs,lesen));
+      $00A2:neu(nowvar,new(pdatat,lesen));
       $0000..$009F,$00A1,$00A3..$7FFF:skiptag;
       $8000..$FFFE:skipcontext;
-      $FFFF:begin nopar; now^:=nil; exit end;
+      $FFFF:begin nopar; nowvar^:=nil; exit end;
       end;
 if tulabfehler then exit;
 until false;
@@ -896,21 +919,21 @@ end;
 { tchanl }
 
 constructor tchanl.lesen;
-var   id:word; now:tagzeigerzeiger;
+var   id:word; nowvar:tagzeigerzeiger;
       parms:array[1..6] of char;
 begin
 tag.lesen;
 line:='Channel protocol:';
 s.read(kanz,2); { Anzahl der Kanaele: Leider meist =0}
 s.read(parms,6);
-now:=@nested;
+nowvar:=@nested;
 repeat
    s.read(id,2);
    case id of
       $0000..$7FFF:skiptag;
-      $8005:neu(now,new(pnestchanl,lesen));
+      $8005:neu(nowvar,new(pnestchanl,lesen));
       $8000..$8004,$8006..$FFFE:skipcontext;
-      $FFFF:begin nopar; now^:=nil; exit end;
+      $FFFF:begin nopar; nowvar^:=nil; exit end;
       end;
 if tulabfehler then exit;
 until false;
@@ -919,24 +942,24 @@ end;
 { tnestchanl }
 
 constructor tnestchanl.lesen;
-var   id:word; now:tagzeigerzeiger;
+var   id:word; nowvar:tagzeigerzeiger;
       parms:array[1..8] of char;
 begin
 tag.lesen;
 line:='  Channel definition ['+wort(num)+']:';
 s.read(parms,8);
-now:=@nested;
+nowvar:=@nested;
 repeat
    s.read(id,2);
    case id of
-      $0001:neu(now,new(pname,lesen));
-      $0082:neu(now,new(pfactor,lesen));
+      $0001:neu(nowvar,new(pname,lesen));
+      $0082:neu(nowvar,new(pfactor,lesen));
       $0083:skiptag;
-      $0084:neu(now,new(pspec,lesen));
-      $008A:neu(now,new(psfrq,lesen));
+      $0084:neu(nowvar,new(pspec,lesen));
+      $008A:neu(nowvar,new(psfrq,lesen));
       $0000,$0002..$0081,$0085..$0089,$008B..$7FFF:skiptag;
       $8000..$FFFE:skipcontext;
-      $FFFF:begin nopar; now^:=nil; exit end;
+      $FFFF:begin nopar; nowvar^:=nil; exit end;
       end;
 until false;
 end;

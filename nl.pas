@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 program neurolab;
 {Authors: Berthold Hedwig & Marko Knepper}
@@ -9,25 +9,29 @@ program neurolab;
 {$A+,B-,E+,F-,G+,I-,N+,P+,T+,V+,X-} {$M 65520,0}
 {$ENDIF}
 
-uses  {$ifdef windows} wincrt, windos, {$else} crt, dos, {$endif}
+uses  crt, dos,
                           daff,wavpcm,tulab42,nlrahmen,           grafik,
                           tlfilter,           nltrigg,            nlgrafik,
       bequem,             tlfiles,            nlfiles,
       objects,                                nlsicht,
                                               nlausw;
 
-const version='8.4';  paramver='8.4';
+const version='9.04';  paramver='8.4'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen!}
       {$IFDEF DPMI}   plattform='DPMI '; {$ENDIF}
       {$IFDEF MSDOS}  plattform='MSDOS'; {$ENDIF}
-      {$IFDEF WINDOW} plattform='Wind.'; {$ENDIF}
+      {$IFDEF WIN32}  plattform='Win32'; {$ENDIF}
+      {$IFDEF LINUX}  plattform='Linux'; {$ENDIF}
+      {$IFDEF FPC} maxavail=9223372036854775807; memavail=maxavail; {$ENDIF}
+      {$ifdef fpc} nlbext='.nlx'; {$else} nlbext='.nlb'; {$endif}
       id:string[8]='Neurl'+paramver;
-      sichername:namestr='NEUROLAB';
-      pufgroesse=32768;
+      sichername:string='NEUROLAB';
+      {$IFDEF fpc} pufgroesse=2147483647; {$ELSE } pufgroesse=32768; {$ENDIF}
 
 var   exitsave:pointer;
+      named:dirstr; namen:namestr; namee:extstr;
 
 procedure verstaerkungen;
-var   i,j:longint;
+var   i,j:grossint;
       mult:extended; textstr:string20;
 procedure tabelle (von:byte);
 var   i:byte;
@@ -80,14 +84,15 @@ var    indexalt:byte;
 procedure filteruebersicht;
 begin
 writeln('Filters:');
-writeln(     ' y : y-Resolution   a : Amplification  - : Invert Sign    s : Spike Filter',
+writeln(     ' y : x-Resolution   a : Amplification  - : Invert Sign    s : Spike Filter',
         lfcr,' j : Points (TL)    o : ñ Offset       v : Absolute Value g : Gliding Av.    ',
         lfcr,' c : Clip           h : High-Pass      2 : Square         z : Gliding Length ',
         lfcr,' t : ñ Time Shift   l : Low-Pass       r : Reciprocal V.  f : Frequency (TL) ',
         lfcr,' # : Count (TL)     d : Differentiate  + : Summation      i : Interval (TL)',
         lfcr,' p : Polygon (TL)   w : Integration    e : arcsin         x : Time Diff.(TL)',
         lfcr,' m : Max - Min      n : Gl. Integr.    k : arccos         b : Phase (TL)',
-        lfcr,' = : Correlation');
+        lfcr,' = : Correlation    > : ASCII Data     . : Pulse counter  / : Angle',
+        lfcr,' q : Absolute (x y) u : Integration (TL)');
 end;
 
 procedure filtersetzen;
@@ -160,6 +165,8 @@ for i:=1 to length(fi) do
          end;
       'p':filtersetz(new(polygonfilterzg,neu(
             upcase(readchar('Polygon: for Trigger List (A-'+listmax+')','A')))),k);
+      'q':filtersetz(new(betragzg,neu(
+             readint('Absolute (x y): y channel No',0))),k);
       'r':filtersetz(new(einsdurchzg,neu),k);
       's':begin
         einheitensetzen(fre);
@@ -171,16 +178,19 @@ for i:=1 to length(fi) do
         end;
       't':filtersetz(new(verschiebezg,neu(
             readext('Time Shift: Value [ms]',0,3,1))),k);
+      'u':filtersetz(new(tlintfilterzg,neu(
+            upcase(readchar('Integration: for Trigger List (A-'+listmax+')','A')))),k);
       'v':filtersetz(new(absolutzg,neu),k);
       'w':filtersetz(new(intzg,neu),k);
       'x':filtersetz(new(diffilterzg,neu(
             upcase(readchar('Time Difference: Reference List','A')),
             upcase(readchar('                 Event List','B')),
-            readint('                 Time Window [ms]',100))),k);
+            readint('                 Time Window [ms]',100),
+            upcase(readchar('                 n=nearest, f=forward, b=backward','n')))),k);
       'y':begin
         einheitensetzen(fre);
         filtersetz(new(streckungzg,neu(k,
-             readext('y-Resolution: max value ['+belegungsliste[k].einhwort+']',
+             readext('x-Resolution: max value ['+belegungsliste[k].einhwort+']',
                      spannung(maxsample,k),4,2))),k);
         end;
       'z':filtersetz(new(gllinzg,neu(
@@ -192,7 +202,21 @@ for i:=1 to length(fi) do
             readint('Correlation: Channel No',0),
             readext('Correlation: Width [ms]',1,3,1))),k);
       '#':filtersetz(new(zaehltfilterzg,neu(
-       upcase(readchar('Count: Trigger List (A-'+listmax+')','A')))),k)
+       upcase(readchar('Count: Trigger List (A-'+listmax+')','A')))),k);
+      '>':filtersetz(new(asciifilterzg,neu(
+            upcase(readchar('ASCII Data: Trigger List (A-'+listmax+')','A')),
+                 readstring('            File Name','list.asc'))),k);
+      '/':filtersetz(new(winkelzg,neu(
+             readint('x-y-angle: x channel No',0))),k);
+      '.':begin
+         einheitensetzen(fre);
+         filtersetz(new(digitalzg,neu(k,
+            round(readext('Pulse counter: Threshold ['+belegungsliste[k].einhwort
+                          +']',500,3,1)/belegungsliste[k].faktor),
+            readstring('               Pulse separation SI unit','1'),
+            readext('               Pulse separation value',1,5,3))),k);
+         end
+
       else fehler('Filter "'+fi[i]+'" not defined.');
       end;
 indexalt:=k;
@@ -262,8 +286,8 @@ procedure analogdaten;
 procedure superposition;
 const von:messwert=0;       bis:messwert=1000;
       akttrind:char='A';    aktfile:byte=1;
-var   laenge:longint;
-      i:longint;
+var   laenge:grossint;
+      i:grossint;
       chpuff:char;
       grafik:grafiksuperposition;
 begin
@@ -289,8 +313,8 @@ end;
 procedure averagen;
 const von:messwert=0;       bis:messwert=500;
       akttrind:char='A';
-var   laenge,platz:longint;
-      i,gesamt:longint;
+var   laenge,platz:grossint;
+      i,gesamt:grossint;
       chpuff:char;
       grafik:grafikaverage;
 begin
@@ -310,6 +334,7 @@ bis:=messwext(readext('End Time [ms]  ',extzeit(bis),1,0));
 laenge:=round(bis-von); platz:=(laenge+1)*sizeof(wert);
 if (laenge>maxanzahl) or (laenge<=0) then begin
    fehler('Undefined time window'); warte; exit end;
+{$ifndef fpc}
 for i:=0 to maxkanal do if i in kanaele.dabei then begin
    if maxavail<platz then begin
       fehler('Memory not sufficient');
@@ -319,7 +344,8 @@ for i:=0 to maxkanal do if i in kanaele.dabei then begin
       warte; exit end;
    getmem(grafik.mittel[i],platz);
    fillchar(grafik.mittel[i]^,platz,0) end;
-window(1,3,80,25); clrscr;
+{$endif}
+   window(1,3,80,25); clrscr;
 with tliste[akttrind]^ do begin
    gotoxy(1,3);
    writeln('Trigger List   : ',akttrind,' - ',name,
@@ -331,8 +357,10 @@ with tliste[akttrind]^ do begin
 gotoxy(1,18); zwischen('Dialogue',farbe3);
 gotoxy(1,23); write('Abort: <Esc>'); gotoxy(1,20);
 grafik.aufbauen(kanaele,von,laenge,akttrind,gesamt);
+{$ifndef fpc}
 for i:=0 to maxkanal do if i in kanaele.dabei
    then freemem(grafik.mittel[i],platz);
+{$endif}
 end;
 
 procedure phasenaveragen;
@@ -340,7 +368,7 @@ const von=0;
       minabst:messwert=0;             maxabst:messwert=10000;
       akttrind:char='A';
 var   weis:triggerweiser;
-      i,laenge,platz:longint;
+      i,laenge,platz:grossint;
       bis,abst:messwert;
       chpuff:char;
       grafik:grafikphasenaverage;
@@ -365,6 +393,7 @@ bis:=weis.mittelabstand;
 laenge:=round(bis-von); platz:=(laenge+1)*sizeof(wert);
 if laenge>maxanzahl then begin
    fehler('Averaging time too long.'); warte; exit end;
+{$ifndef fpc}
 for i:=0 to maxkanal do if i in kanaele.dabei then begin
    if maxavail<platz then begin
       fehler('Memory not sufficient');
@@ -374,6 +403,7 @@ for i:=0 to maxkanal do if i in kanaele.dabei then begin
       warte; exit end;
    getmem(grafik.mittel[i],platz);
    fillchar(grafik.mittel[i]^,platz,0) end;
+{$endif}
 window(1,3,80,25); clrscr;
 with tliste[akttrind]^ do begin
    gotoxy(1,3);
@@ -388,13 +418,15 @@ gotoxy(1,18); zwischen('Dialogue',farbe3);
 gotoxy(1,23); write('Abort: <Esc>'); gotoxy(1,20);
 grafik.aufbauen(kanaele,von,laenge,akttrind,weis.gesamt,weis);
 weis.frei;
+{$ifndef fpc}
 for i:=0 to maxkanal do if i in kanaele.dabei then freemem(grafik.mittel[i],platz);
+{$endif}
 end;
 
 procedure xydiagramm;
-const   kx:longint=0;
-        ky:longint=1;
-var     puff:longint;
+const   kx:grossint=0;
+        ky:grossint=1;
+var     puff:grossint;
         liste:filterliste;
         grafik:grafikxy;
 begin
@@ -425,7 +457,7 @@ const ref:char='A';
       maxsamp:sample=maxsample;
 var   histogramm:ampnormalhistogramm;
       charpuff:char; wordpuff:word;
-      extpuff:extended; puff:longint;
+      extpuff:extended; puff:grossint;
       liste:filterliste;
 begin
 ueberschrift(false,'Amplitude Histogram','Info',farbe3);
@@ -708,7 +740,7 @@ var   speicher:tbufstream;
 begin
 if filenr>0 then begin
    vorher:=exitproc;
-   speicher.init(sichername+'.nlb',stcreate,pufgroesse);
+   speicher.init(sichername+nlbext,stcreate,pufgroesse);
    speicher.write(id,sizeof(id));
    tlfiles.streamput(speicher);
    nltrigg.streamput(speicher);
@@ -728,7 +760,7 @@ var filename:namestr;
 begin
 pname:=readstring('Configuration file name and path',sichername);
 fsplit(pname,dname,filename,ename);
-if fileschonda(dname+filename+'.nlb') then
+if fileschonda(dname+filename+nlbext) then
    if upcase(readchar('Overwrite? (Y/N)','N'))='Y' then begin
       sichername:=dname+filename;
       sichern;
@@ -739,6 +771,7 @@ if fileschonda(dname+filename+'.nlb') then
    end;
 end;
 
+{$ifndef fpc}
 procedure grafikkarte;
 begin
 ueberschrift(false,'Grafics Adaptor','Info',farbe2);
@@ -759,16 +792,17 @@ writeln;
 grtreiber:=readint('Graphics Adaptor #',grtreiber);
 grmodus:=readint('Graphics Mode #',grmodus);
 end;
+{$endif}
 
 procedure holen;
 var   speicher:tbufstream;
       such:searchrec;
       idtest:string[8];
 begin
-findfirst(sichername+'.nlb',anyfile,such);
+findfirst(sichername+nlbext,anyfile,such);
 if doserror=0 then begin
    exitproc:=exitsave;
-   speicher.init(sichername+'.nlb',stopenread,pufgroesse);
+   speicher.init(sichername+nlbext,stopenread,pufgroesse);
    speicher.read(idtest,sizeof(id));
    if idtest=id then begin
       tlfiles.streamget(speicher);
@@ -794,6 +828,8 @@ if doserror=0 then begin
    end        else zoeger(6000);
 end;
 
+{$IFNDEF FPC}
+
 function heapvoll (groesse:word):integer; far;
 begin
 if groesse=0 then exit;
@@ -807,6 +843,8 @@ if groesse>memavail then write('Memory overflow')
 writeln(', please start again with fingers crossed.',lfcr);
 daff.ausserbetrieb; sichern; halt;
 end;
+
+{$ENDIF}
 
 procedure schluss;
 begin
@@ -822,8 +860,10 @@ end;
 begin
 exitsave:=exitproc;
 exitproc:=@schluss;
-heaperror:=@heapvoll;
+{$IFNDEF FPC} heaperror:=@heapvoll; {$ENDIF}
 if paramcount>0 then sichername:=paramstr(1);
+fsplit(sichername,named,namen,namee);
+sichername:=named+namen;
 laerman;
 clrscr;
 textcolor(cyan);
@@ -832,7 +872,7 @@ writeln(lfcr,'':16,'------------------------------------------',
         lfcr,'':16,'--------   NEUROLAB ',version:4,' (',plattform:5,')  --------',
         lfcr,'':16,'------------------------------------------',
         lfcr,'':16,'------  by B. Hedwig and M. Knepper ------',
-        lfcr,'':16,'--- I. Zoologisches Institut G”ttingen ---',
+        lfcr,'':16,'---------- Cambridge / Wiesbaden ---------',
         lfcr,'':16,'------------------------------------------');
 writeln(lfcr,lfcr);
 writeln('':7,'Program for the analysis of neurobiological and behavioural data');
@@ -840,8 +880,12 @@ textcolor(lightgray); gotoxy(1,20);
 holen;
 repeat
    ueberschrift(false,'Main Menu','Info',farbe1);
+   {$ifdef fpc}
+   writeln('Version           :   ',version:4,' (',plattform:5,')');
+   {$else}
    writeln('Free Memory       :   ',memavail div 1024,' (',maxavail div 1024,') kByte');
-   writeln('Configuration File:   ',sichername,' (Format:',paramver,')');
+   {$endif}
+   writeln('Configuration File:   ',sichername+nlbext,' (Format:',paramver,')');
    writeln('Parameters        :   Channels (Max.): ',kan,', Max. Sampling Rate: ',fre:4:2,' Hz');
    writeln('Open Files        :   ',filenr);
    gotoxy(1,9); zwischen('Menu',farbe1);
@@ -852,12 +896,17 @@ repeat
      lfcr,'  l...List Sampled Data                 a...Analog Data',
      lfcr,'  v...View Data                         i...Interval Data',
      lfcr,
-     lfcr,'  g...Graphics Adaptor',
+     {$ifdef fpc}
+     lfcr,'  -/+.Sound off/on',
+     {$else}
+     lfcr,'  g...Graphics Adaptor                  -/+.Sound off/on',
+     {$endif}
      lfcr,'  s...Save Configuration File           e...End',lfcr);
    zwischen('Dialogue',farbe1);
    window(1,24,80,25);
    if filenr=0 then begin
       case upcase(readcharim('Menu Point','f')) of
+         '+':laerman;                 '-':laermaus;
          'F':nlfiles.manager;
          'E':halt;
          'M','L','T','C','A','V','S','I':begin
@@ -865,11 +914,12 @@ repeat
          end;
       end      else begin
       case upcase(readcharim('Menu Point','e')) of
+         '+':laerman;                 '-':laermaus;
          'F':nlfiles.manager;
          'C':verstaerkungen;          'M':filterung;
          'L':listen;                  'V':sichten;
          'T':nltrigg.manager;         'S':confsichern;
-         'G':grafikkarte;
+         {$ifndef fpc} 'G':grafikkarte; {$endif}
          'A':analogdaten;             'I':intervalldaten;
          'E':begin
               write(lfcr,'Exit? (Y/N) ');

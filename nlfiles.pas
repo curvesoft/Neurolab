@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 }
+{ Borland-Pascal 7.0 / FPC 2.0 }
 
 unit nlfiles;
 
@@ -102,7 +102,7 @@ zwischen('Dialogue',farbe3);
 warte end;
 
 procedure protokoll;
-var   i:longint;
+var   i:grossint;
 begin
 clrscr;
 zwischen('Dialogue',farbe3);
@@ -184,10 +184,10 @@ for ti:='A' to listmax do with tliste[ti]^.fil[filenr+1] do begin
 end;
 
 procedure kompression;
-var   outname:string80;
+var   outname:string80; ganz:pathstr;
       ko:kopfdaten;
       tzaehler,j,i:longint;
-      nr,result:word;
+      nr:word;
       wandert:listenzeiger;
 
 begin
@@ -197,6 +197,9 @@ window(1,18,80,25);
 outname:=readstring('Output file name','select.dat');
 if fileschonda(outname) then
     if upcase(readchar('Overwrite? (Y/N)','N'))<>'Y' then exit;
+ganz:=fexpand(outname);
+for i:=1 to filenr do if ganz=fexpand(liste[i].name) then begin
+   fehler('File open (No. '+wort(i)+')'); warte; exit end;
 ko.kennung:=readstring('Protocol','Selected Data File');
 ueberschrift(false,'Selected Data File','Info',farbe3);
 clrscr; kanaele.lesen(6,farbe3);
