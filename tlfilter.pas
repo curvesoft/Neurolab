@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 / FPC 2.4 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
 {$ifdef fpc} {$mode TP} {$endif}
 
 unit  tlfilter;

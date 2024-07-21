@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 / FPC 2.4 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
 {$ifdef fpc} {$mode TP} {$endif}
 
 unit  nlgrafik;
@@ -11,7 +11,7 @@ unit  nlgrafik;
 
 interface
 
-uses  crt,                 graph,             daff,wavpcm,tulab42, nlrahmen,
+uses  crt,                graph,              daff,wavpcm,tulab42, nlrahmen,
       dos,                grafik,             tlfilter,            nltrigg,
       bequem,             plotter,            tlfiles;
 
