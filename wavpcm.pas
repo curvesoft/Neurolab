@@ -116,8 +116,6 @@ procedure kopfschreiben (name:string80; kodaten:kopfdaten);
 var   s:file;
       ko:header;
       ch:chunk;
-      i:longint;
-      a,b,c,d:word;
 begin
 fillchar(ko,sizeof(ko),#0);
 assign(s,name);
