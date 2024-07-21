@@ -1,4 +1,5 @@
-{ Borland-Pascal 7.0 / FPC 2.0 }
+{ Borland-Pascal 7.0 / FPC 2.4 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit  bequem;
 
@@ -11,7 +12,6 @@ unit  bequem;
 interface
 
 uses  crt;
-
 const lfcr=#10#13;
 
       ln10=2.302585093;
@@ -37,7 +37,10 @@ function zahl (zahlstr:string20):grossint;
 function wort (zahl:grossint):string20;
 function extwort (zahl:extended; l,n:byte):string20;
 function extewort (zahl:extended; a,b:byte):string20;
+function extfwort (zahl:extended; a:byte):string20;
+procedure schieben (var puffer:string);
 procedure kompri (var puffer:string);
+function kleinbuchstaben (puffer:string):string;
 
 procedure laerman;
 procedure laermaus;
@@ -62,7 +65,7 @@ implementation
 
 const  laerm:boolean=false;
 
-function min (a,b:grossint) :grossint;
+function min(a,b:grossint) :grossint;
 begin
 if a<b then min:=a else min:=b;
 end;
@@ -143,6 +146,17 @@ for i:=1 to b-1 do if zahlstr[7+a]='0' then begin
 extewort:=zahlstr;
 end;
 
+function extfwort (zahl:extended; a:byte):string20;
+var   zahlstr:string20;
+      i:byte;
+begin
+str(zahl:9+a,zahlstr);
+insert(' ',zahlstr,4+a);
+for i:=1 to 3 do if zahlstr[7+a]='0' then
+   delete(zahlstr,7+a,1);
+extfwort:=zahlstr;
+end;
+
 procedure laerman;
 begin
 laerm:=true;
@@ -155,34 +169,26 @@ end;
 
 procedure piep;
 begin
-{$ifdef windows}
-write(#7);
-{$else}
 if laerm then begin
    sound(2000); delay(300);
    nosound;
    end;
-{$endif}
 end;
 
 procedure pieps;
 begin
-{$ifdef windows}
-write(#7);
-{$else}
 if laerm then begin
    sound(3000); delay(50);
    nosound;
    end;
-{$endif}
 end;
 
 procedure fehler (text:string80);
 var  textattralt:byte;
 begin
-{$ifndef windows} textattralt:=textattr; textcolor(lightred+blink); {$endif}
+textattralt:=textattr; textcolor(lightred+blink);
 write('--> ');
-{$ifndef windows} textattr:=textattralt; {$endif}
+textattr:=textattralt;
 write(text);
 pieps;
 end;
@@ -276,6 +282,16 @@ begin
 i:=pos(' ',puffer);
 while i>0 do begin delete(puffer,i,1); i:=pos(' ',puffer) end;
 end;
+
+function kleinbuchstaben (puffer:string):string;
+const diff=ord('a')-ord('A');
+var   i:word;
+begin
+for i:=1 to length(puffer) do
+   if puffer[i] in ['A'..'Z'] then puffer[i]:=chr(ord(puffer[i])+diff);
+kleinbuchstaben:=puffer;
+end;
+
 
 function readint (text:string80; sonst:grossint):grossint;
 var   puffer:string80;  code:integer;
