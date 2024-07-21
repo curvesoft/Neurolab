@@ -1,4 +1,5 @@
 { Borland-Pascal 7.0 / FPC 2.0 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit nlfiles;
 
@@ -65,13 +66,13 @@ end;
 procedure neufile;
 var   ganz:pathstr;
       i:byte;
-      hilf:listenzeiger; philf:punktzeiger;
-      j:char;
 
 begin
 ueberschrift(false,'Open File','Dialogue',farbe3);
 with liste[filenr+1], ko do begin
    window(1,3,80,8);
+   if kan<>0 then
+      writeln('All files must have identical channels - Only sampling frequencies may vary.',lfcr);
    name:=readstring('File name','');
    fsplit(name,named,namen,namee); if namee='' then namee:='.DAT';
    name:=named+namen+namee;
@@ -187,54 +188,122 @@ procedure kompression;
 var   outname:string80; ganz:pathstr;
       ko:kopfdaten;
       tzaehler,j,i:longint;
+      textstr:string;
       nr:word;
       wandert:listenzeiger;
+      label abbruch;
+
+procedure tabelle (von:byte);
+var   i:byte;
+begin
+if von<=ko.nkan-1 then
+   writeln('Channel':7,'Label [Unit]':14,'Scale':11);
+for i:=von to min(von+7,ko.nkan-1) do with ko.k[i] do
+   writeln(i:5,name:16,extewort(faktor1*maxsample,2,2):12);
+end;
 
 begin
-clrscr;
-zwischen('Dialogue',farbe3);
-window(1,18,80,25);
-outname:=readstring('Output file name','select.dat');
-if fileschonda(outname) then
-    if upcase(readchar('Overwrite? (Y/N)','N'))<>'Y' then exit;
-ganz:=fexpand(outname);
-for i:=1 to filenr do if ganz=fexpand(liste[i].name) then begin
-   fehler('File open (No. '+wort(i)+')'); warte; exit end;
-ko.kennung:=readstring('Protocol','Selected Data File');
+ko.kennung:=readstring('Protocol',liste[1].ko.kennung+' (sel.)');
 ueberschrift(false,'Selected Data File','Info',farbe3);
 clrscr; kanaele.lesen(6,farbe3);
 if kanaele.kn=0 then exit;
-if not (upcase(readchar('Start? (Y/N)','Y')) in ['Y','J']) then begin
-   fehler('No file created.'); warte; exit end;
 with ko do begin
    produzent:='NEUROLAB';
    freq:=fre;
    nkan:=kanaele.kn;
    i:=0;
    for j:=0 to maxkanal do if j in kanaele.dabei then begin
-      ko.k[i].name:=schriftliste[j];
+      ko.k[i].name:=schriftliste[j]+' ['+belegungsliste[j].einhwort+']';
+      if length(ko.k[i].name)>10 then ko.k[i].name:=schriftliste[j]+'['+belegungsliste[j].einhwort+']';
+      if length(ko.k[i].name)>10 then ko.k[i].name:=schriftliste[j];
       ko.k[i].faktor1:=belegungsliste[j].faktor;
       ko.k[i].faktor2:=1;
       i:=i+1;
       end;
    end;
-kopfplatzschreiben(outname);
-assign(seqdaten,outname);
-seqoeffne;
-for nr:=1 to filenr do with liste[nr] do begin
-   wandert:=block^;
-   oeffnen(nr);
-   while wandert^.next<>nil do begin
-      for tzaehler:=trunc(wandert^.von+1) to trunc(wandert^.bis) do
-         for j:=0 to maxkanal do if j in kanaele.dabei then begin
-            seqschreibe(dat(zwi(tzaehler),j));
-            end;
-      wandert:=wandert^.next;
+ueberschrift(false,'Selected Data File','Info',farbe3);
+i:=0;
+repeat
+   window(1,3,38,12); clrscr; tabelle(0);
+   window(43,3,80,12); clrscr; tabelle(8);
+   window(1,13,80,19); zwischen('Menu',farbe3);
+   writeln(lfcr,'  w...Create WAV-File',lfcr,'  d...Enter Channel Data',lfcr,
+                '  c...Create Turbolab-File',lfcr,'  x...Exit');
+   window(1,20,80,25); clrscr;
+   zwischen('Dialogue',farbe3); writeln;
+   case upcase(readcharim('Menu Point',' ')) of
+      'D':begin
+          clrscr; zwischen('Dialogue',farbe3);
+          window(1,21,80,25);
+          j:=readint('Channel No.',i);
+          if not(j in [0..ko.nkan-1]) then begin
+             writeln; fehler('Undefined channel number'); warte end
+                                  else with ko.k[j] do begin
+             i:=j;
+             name:=copy(readstring('Label [Basic SI Unit]',name),1,10);
+             faktor1:=readexte('Maximum on Scale',faktor1*maxsample,2,2)/maxsample;
+             if (faktor1<1e-19) or (faktor1>1e19) then
+                begin fehler('Value out of range'); faktor1:=1; warte end;
+             end;
+          end;
+      'W':begin
+            outname:=readstring('Output file name','select.wav');
+            if fileschonda(outname) then
+             if upcase(readchar('Overwrite? (Y/N)','N'))<>'Y' then goto abbruch;
+            ganz:=kleinbuchstaben(fexpand(outname));
+            for i:=1 to filenr do if ganz=kleinbuchstaben(fexpand(liste[i].name)) then begin
+               fehler('File open (No. '+wort(i)+')'); warte; goto abbruch end;
+            wavpcm.kopfplatzschreiben(outname);
+            assign(seqdaten,outname);
+            seqoeffne;
+            for nr:=1 to filenr do with liste[nr] do begin
+              wandert:=block^;
+              oeffnen(nr);
+              while wandert^.next<>nil do begin
+                for tzaehler:=trunc(wandert^.von+1) to trunc(wandert^.bis) do
+                   for j:=1 to kanaele.kn do seqschreibeint16(dat(zwi(tzaehler),kanaele.k[j]));
+                   wandert:=wandert^.next;
+                end;
+              schliesse;
+              end;
+            seqschliesse;
+            wavpcm.kopfschreiben(outname,ko);
+            fehler('File '+outname+' as WAV-File created'); warte
+          end;
+      'C':begin
+            outname:=readstring('Output file name','select.dat');
+            if fileschonda(outname) then
+             if upcase(readchar('Overwrite? (Y/N)','N'))<>'Y' then goto abbruch;
+            ganz:=kleinbuchstaben(fexpand(outname));
+            for i:=1 to filenr do if ganz=kleinbuchstaben(fexpand(liste[i].name)) then begin
+               fehler('File open (No. '+wort(i)+')'); warte; goto abbruch end;
+            tulab42.kopfplatzschreiben(outname);
+            assign(seqdaten,outname);
+            seqoeffne;
+            for nr:=1 to filenr do with liste[nr] do begin
+              wandert:=block^;
+              oeffnen(nr);
+              while wandert^.next<>nil do begin
+                for tzaehler:=trunc(wandert^.von+1) to trunc(wandert^.bis) do
+                   for j:=1 to kanaele.kn do seqschreibe(dat(zwi(tzaehler),kanaele.k[j]));
+                   wandert:=wandert^.next;
+                end;
+              schliesse;
+              end;
+            seqschliesse;
+            tulab42.kopfschreiben(outname,ko);
+            fehler('File '+outname+' as Turbolab-File created'); warte
+          end;
+      'X':begin exit end;
       end;
-   schliesse;
-   end;
-seqschliesse;
-kopfschreiben(outname,ko);
+abbruch:
+until false;
+
+
+
+if not (upcase(readchar('Start? (Y/N)','Y')) in ['Y','J']) then begin
+   fehler('No file created.'); warte; exit end;
+
 end;
 
 procedure manager;
@@ -252,7 +321,7 @@ repeat
   writeln;
   writeln('  d...Directory of Data Files           s...Conditions for File Sets',lfcr,
           '  o...Open File                         c...Close File',lfcr,
-          '  p...Protocol of File                  f...Create Selected Data File',lfcr,
+          '  p...Protocol of File                  f...Export Selected Data File',lfcr,
           '  m...Main Menu',lfcr);
   zwischen('Dialogue',farbe2);
   writeln;
