@@ -1,8 +1,9 @@
 { Borland-Pascal 7.0 / FPC 2.0 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit  nlrahmen;
 
-{$ifdef fpc} {$ifndef ide} {$R *.res} {$endif} {$endif}
+{$ifdef fpc} {$R *.res} {$endif}
 
 {$IFDEF MSDOS}
 {$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X-}
@@ -97,8 +98,7 @@ end;
 
 procedure filterliste.weiterzeigen;
 label  voll;
-var    i:byte;
-       windminalt,windmaxalt:word;
+var    windminalt,windmaxalt:word;
        wy,wx:byte;
 begin
 wy:=wherey; wx:=wherex;
