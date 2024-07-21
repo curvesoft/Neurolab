@@ -1,4 +1,5 @@
 { Borland-Pascal 7.0 / FPC 2.0}
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit tlfiles;
 
@@ -19,9 +20,9 @@ const maxfiles=20;
 type  {$ifdef fpc} messwert=extended; wert=double; {$else} messwert=double; wert=single; {$endif}
 
       { Bei den beiden Listen "blockliste" und "punktliste" wird dieselbe Zeigerstruktur }
-      { verwendet. Am Anfang und am Ende der Liste wird jeweils ein zus„tzliches Element }
-      { angeh„ngt, das bei jeder Suche in der Liste zu klein bzw. zu groá ist. Die Werte }
-      { hierfr stammen aus den Konstanten anf.. bzw. end... . Erreicht wird die Liste   }
+      { verwendet. Am Anfang und am Ende der Liste wird jeweils ein zusätzliches Element }
+      { angehängt, das bei jeder Suche in der Liste zu klein bzw. zu groß ist. Die Werte }
+      { hierfür stammen aus den Konstanten anf.. bzw. end... . Erreicht wird die Liste   }
       { durch einen Zeiger (auf...zeiger), der auf den next-Zeiger (nicht auf das Listen-}
       { element) des Anfangselementes zeigt.                                             }
 
@@ -268,7 +269,7 @@ begin
 s.read(name,sizeof(name)); fsplit(name,named,namen,namee);
 s.read(ko,sizeof(kopfdaten));
 s.read(laenge,sizeof(messwert));
-{ Die Zeigerstruktur der Bl”cke wird neu aufgebaut und die Bl”cke aus dem Stream gelesen }
+{ Die Zeigerstruktur der Blöcke wird neu aufgebaut und die Blöcke aus dem Stream gelesen }
 new(hilf,anfblock);
 block:=addr(hilf^.next);
 hilf^.next:=listenzeiger(s.get);
