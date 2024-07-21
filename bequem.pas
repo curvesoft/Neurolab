@@ -10,7 +10,7 @@ unit  bequem;
 
 interface
 
-uses {$ifdef windows} wincrt, dostowin; {$else} crt; {$endif}
+uses  crt;
 
 const lfcr=#10#13;
 

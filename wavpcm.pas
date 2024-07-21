@@ -10,8 +10,7 @@ unit  wavpcm;
 
 interface
 
-uses  {$ifdef windows} wincrt, windos, dostowin,
-      {$else} crt, dos, objects, {$endif}
+uses  crt, dos, objects,
       bequem, daff;
 
 procedure kopf (name:fnamestr; var kodaten:kopfdaten);
