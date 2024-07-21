@@ -1,4 +1,5 @@
-{ Borland-Pascal 7.0 / FPC 2.0 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 program neurolab;
 {Authors: Berthold Hedwig & Marko Knepper}
@@ -9,23 +10,21 @@ program neurolab;
 {$A+,B-,E+,F-,G+,I-,N+,P+,T+,V+,X-} {$M 65520,0}
 {$ENDIF}
 
-uses  crt, dos,
-                          daff,wavpcm,tulab42,nlrahmen,           grafik,
+uses  crt, dos,           daff,wavpcm,tulab42,nlrahmen,           grafik,
                           tlfilter,           nltrigg,            nlgrafik,
       bequem,             tlfiles,            nlfiles,
       objects,                                nlsicht,
                                               nlausw;
 
-const version='10.00'; paramver='8.4'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen!}
-      {$IFDEF DPMI}   plattform='DPMI '; {$ENDIF}
-      {$IFDEF MSDOS}  plattform='MSDOS'; {$ENDIF}
-      {$IFDEF WIN32}  plattform='Win32'; {$ENDIF}
-      {$IFDEF LINUX}  plattform='Linux'; {$ENDIF}
+const version='10.01';  paramver='8.5'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen und komp84 abschaffen!}
+      {$IFDEF DPMI}   plattform='DPMI  BP7'; {$ENDIF}
+      {$IFDEF MSDOS}  plattform='MSDOS BP7'; {$ENDIF}
+      {$IFDEF fpc}    plattform={$I %FPCTARGET%}+' '+{$I %FPCVERSION%}; {$ENDIF}
       {$IFDEF FPC} maxavail=9223372036854775807; memavail=maxavail; {$ENDIF}
       {$ifdef fpc} nlbext='.nlx'; {$else} nlbext='.nlb'; {$endif}
       id:string[8]='Neurl'+paramver;
       sichername:string='NEUROLAB';
-      {$IFDEF fpc} pufgroesse=2147483647; {$ELSE } pufgroesse=32768; {$ENDIF}
+      {$IFDEF fpc} pufgroesse=65535; {$ELSE} pufgroesse=32768; {$ENDIF}
 
 var   exitsave:pointer;
       named:dirstr; namen:namestr; namee:extstr;
@@ -84,10 +83,10 @@ var    indexalt:byte;
 procedure filteruebersicht;
 begin
 writeln('Filters:');
-writeln(     ' y : x-Resolution   a : Amplification  - : Invert Sign    s : Spike Filter',
-        lfcr,' j : Points (TL)    o : ñ Offset       v : Absolute Value g : Gliding Av.    ',
+writeln(     ' y : y-Resolution   a : Amplification  - : Invert Sign    s : Spike Filter',
+        lfcr,' j : Points (TL)    o : +/- Offset     v : Absolute Value g : Gliding Av.    ',
         lfcr,' c : Clip           h : High-Pass      2 : Square         z : Gliding Length ',
-        lfcr,' t : ñ Time Shift   l : Low-Pass       r : Reciprocal V.  f : Frequency (TL) ',
+        lfcr,' t : +/- Time Shift l : Low-Pass       r : Reciprocal V.  f : Frequency (TL) ',
         lfcr,' # : Count (TL)     d : Differentiate  + : Summation      i : Interval (TL)',
         lfcr,' p : Polygon (TL)   w : Integration    e : arcsin         x : Time Diff.(TL)',
         lfcr,' m : Max - Min      n : Gl. Integr.    k : arccos         b : Phase (TL)',
@@ -115,8 +114,8 @@ write(#13); clreol;
 k:=kan;
 while filterdrin(k) and (k<maxkanal) do inc(k);
 k:=readint('Output Channel No. ('+wort(kan)+'-'+wort(kan+filtermax-1)+')',k);
-if not (k in [kan..kan+filtermax-1]) then begin
-   fehler('Output channel no. expected'); warte; exit end;
+if not ((k in [kan..kan+filtermax-1]) and (k<>ke)) then begin
+   fehler('Valid output channel no. expected'); warte; exit end;
 clrscr;
 writeln('Input Channel: ',ke,' (',schriftliste[ke],')',lfcr,
         'Output Channel: ',k);
@@ -190,7 +189,7 @@ for i:=1 to length(fi) do
       'y':begin
         einheitensetzen(fre);
         filtersetz(new(streckungzg,neu(k,
-             readext('x-Resolution: max value ['+belegungsliste[k].einhwort+']',
+             readext('y-Resolution: max value ['+belegungsliste[k].einhwort+']',
                      spannung(maxsample,k),4,2))),k);
         end;
       'z':filtersetz(new(gllinzg,neu(
@@ -204,8 +203,8 @@ for i:=1 to length(fi) do
       '#':filtersetz(new(zaehltfilterzg,neu(
        upcase(readchar('Count: Trigger List (A-'+listmax+')','A')))),k);
       '>':filtersetz(new(asciifilterzg,neu(
-            upcase(readchar('ASCII Data: Trigger List (A-'+listmax+')','A')),
-                 readstring('            File Name','list.asc'))),k);
+                 readstring('ASCII Data: File Name','list.asc'),
+            upcase(readchar('            Assign to Trigger List (A-'+listmax+')','A')))),k);
       '/':filtersetz(new(winkelzg,neu(
              readint('x-y-angle: x channel No',0))),k);
       '.':begin
@@ -285,9 +284,8 @@ end;
 procedure analogdaten;
 procedure superposition;
 const von:messwert=0;       bis:messwert=1000;
-      akttrind:char='A';    aktfile:byte=1;
+      akttrind:char='A';
 var   laenge:grossint;
-      i:grossint;
       chpuff:char;
       grafik:grafiksuperposition;
 begin
@@ -369,7 +367,7 @@ const von=0;
       akttrind:char='A';
 var   weis:triggerweiser;
       i,laenge,platz:grossint;
-      bis,abst:messwert;
+      bis:messwert;
       chpuff:char;
       grafik:grafikphasenaverage;
 begin
@@ -713,13 +711,13 @@ begin
 repeat
    ueberschrift(false,'Interval Data','Info',farbe2);
    triggeruebersicht;
-   gotoxy(1,11);
+   gotoxy(1,13);
    zwischen('Menu',farbe2);
    writeln;
    writeln('          i...Interval Histogram          a...Auto Correlogram',
       lfcr,'          l...Latency Histogram           c...Cross Correlogram',
       lfcr,'          s...PST-Histogram               p...Phase Histogram',
- lfcr,lfcr,'          m...Main Menu',lfcr);
+      lfcr,'          m...Main Menu');
    gotoxy(1,21);
    zwischen('Dialogue',farbe2);
    writeln;
@@ -804,6 +802,7 @@ if doserror=0 then begin
    exitproc:=exitsave;
    speicher.init(sichername+nlbext,stopenread,pufgroesse);
    speicher.read(idtest,sizeof(id));
+   komp84:=(idtest='Neurl8.4') and (id='Neurl8.5');  if komp84 then idtest:='Neurl8.5';
    if idtest=id then begin
       tlfiles.streamget(speicher);
       kanaele.voreinstellung;
@@ -824,8 +823,8 @@ if doserror=0 then begin
       end;
    speicher.done;
    exitproc:=@schluss;
-   zoeger(4000);
-   end        else zoeger(6000);
+   zoeger(5000);
+   end        else zoeger(8000);
 end;
 
 {$IFNDEF FPC}
@@ -869,7 +868,7 @@ clrscr;
 textcolor(cyan);
 gotoxy(1,6);
 writeln(lfcr,'':16,'------------------------------------------',
-        lfcr,'':16,'--------   NEUROLAB ',version:4,' (',plattform:5,')  --------',
+        lfcr,'':16,'----   NEUROLAB ',version:4,' (',plattform:13,')  ----',
         lfcr,'':16,'------------------------------------------',
         lfcr,'':16,'------  by B. Hedwig and M. Knepper ------',
         lfcr,'':16,'---------- Cambridge / Wiesbaden ---------',

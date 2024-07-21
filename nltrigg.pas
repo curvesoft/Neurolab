@@ -1,4 +1,5 @@
-{ Borland-Pascal 7.0 / FPC 2.0 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit nltrigg;
 
@@ -16,7 +17,7 @@ uses  crt, dos,           daff,wavpcm,tulab42,
       nlrahmen;
 
 const {$ifdef fpc} triggermax=1 shl 22 -1; {$else} triggermax=65520 div sizeof(messwert) -12; {$endif}
-      listmax='H';
+      listmax='J';
 
 type  { Triggerlisten }
 
@@ -36,7 +37,7 @@ type  { Triggerlisten }
 
       filemenge=set of 1..maxfiles;
 
-      { Triggeralgoritmen }
+      { Triggeralgorithmen }
 
       triggerungzg=^triggerung;
       triggerung=object (tobject)
@@ -61,9 +62,17 @@ type  { Triggerlisten }
          procedure triggern (dabei:filemenge); virtual;
          end;
 
+      gelesenzg=^gelesen;
+      gelesen=object (triggerung)
+         constructor neu;
+      private
+         procedure triggern (dabei:filemenge); virtual;
+         end;
+
       punktezg=^punkte;
       punkte=object (triggerung)
          constructor neu;
+      private
          procedure triggern (dabei:filemenge); virtual;
          end;
 
@@ -218,7 +227,7 @@ type  { Triggerlisten }
       alistentyp=array[1..triggermax] of ywert;
       asciifilterzg=^asciifilter;
       asciifilter=object (triggerfilter)
-         constructor neu(trigliste:char; aname:string);
+         constructor neu(aname:string; trigliste:char);
          procedure einheitgenerieren(var beleg:belegung); virtual;
          procedure vorbereitung (frequenz:extended); virtual;
          function gefiltert (posi:grossint):sample; virtual;
@@ -297,6 +306,7 @@ const triggeranz:exword=triggermax;
       triggerdst:messwert=0;
 
 var   tliste:triggerungsliste;
+      komp84:boolean; {Kompatibilitaet zwischen 8.4 und 8.5}
 
 procedure autoblock (aktfile:byte);
 
@@ -351,6 +361,8 @@ const bloecke:boolean=false;
       akttrkan:byte=0;
 
       rkeine:tstreamrec=    (objtype:100;             vmtlink:ofs(typeof(keine)^);
+                             load:@triggerung.load;   store:@triggerung.store);
+      rgelesen:tstreamrec=  (objtype:111;             vmtlink:ofs(typeof(gelesen)^);
                              load:@triggerung.load;   store:@triggerung.store);
       rpunkte:tstreamrec=   (objtype:101;             vmtlink:ofs(typeof(punkte)^);
                              load:@triggerung.load;   store:@triggerung.store);
@@ -517,21 +529,21 @@ var   fi:byte;
 procedure zeile;
 var   ti:char;
 begin
-write(fi:3,' : ',liste[fi].namen:8,'   ');
-for ti:='A' to listmax do if fi in tl[ti] then write(tz[ti,fi]:7)
-                                          else write('-':7);
+write(fi:3,':',liste[fi].namen:8,' ');
+for ti:='A' to listmax do if fi in tl[ti] then write(tz[ti,fi]:6)
+                                          else write('-':6);
 writeln;
 end;
 
 begin
 zn:=wherey;
-write('File':14,'   '); for ti:='A' to listmax do write(ti:7); writeln(lfcr);
+write('File':12,' '); for ti:='A' to listmax do write(ti:6); writeln(lfcr);
 for fi:=1 to filenr do zeile;
 end;
 
 procedure zahlenmatrix.erstsprung;
 begin
-wx:=18+(ord(tn)-ord('A'))*7;
+wx:=14+(ord(tn)-ord('A'))*6;
 wy:=zn+1+fn;
 gotoxy(wx,wy);
 end;
@@ -560,7 +572,7 @@ var   di:dirstr; na:namestr; ext:extstr;
 begin
 gesamt:=0; zaehler:=1; abzaehler:=triggerabz; letztstelle:=-maxmesswert;
 zn:=wherey;
-mat.erstsprung; write(0:5);
+mat.erstsprung; write(0:6);
 fsplit(liste[trfile].name,di,na,ext);
 gotoxy(1,zn); clreol;
 write('Trigger event in ',na+ext:11,' at           ms: Abort: <Esc>');
@@ -578,7 +590,7 @@ if stelle-letztstelle>=triggerdst then begin
                               else begin
          inc(gesamt); aut^[gesamt]:=stelle;
          ausgabe:= (gesamt mod 128) = 0;
-         if ausgabe then begin mat.sprung; write(gesamt:7) end;
+         if ausgabe then begin mat.sprung; write(gesamt:6) end;
          abzaehler:=1;
          end;
    end;
@@ -683,10 +695,11 @@ begin end;
 
 constructor punkte.neu;
 begin
-triggerung.neu;
+triggerung.neu; tr:=maxkanal;
 name:='user defined points';
 end;
 
+{ Alte Prozedur ohne Bloecke...
 procedure punkte.triggern (dabei:filemenge);
 var   trfile:byte;
       pwandert:punktzeiger;
@@ -695,20 +708,91 @@ for trfile:=1 to filenr do if trfile in dabei then
  with fil[trfile], liste[trfile] do begin
    mat.fn:=trfile;
    verfol.beginn(trfile); if abbruch then exit;
-   oeffnen(trfile);
+(*   oeffnen(trfile); *)
    pwandert:=selbst^;
    while (pwandert^.next<>nil) and not verfol.aufhoeren do begin
       verfol.weiter(pwandert^.bei);
       pwandert:=pwandert^.next end;
    nimm(aut^,verfol.gesamt);
-   schliesse;
+(*   schliesse;  *)
    if abbruch then exit;
    end;
 end;
+}
+
+procedure punkte.triggern (dabei:filemenge);
+label genug;
+var   trfile:byte;
+      wandert:listenzeiger;
+      pwandert:punktzeiger;
+procedure punkteblocktriggern(von,bis:messwert);
+begin
+while (pwandert^.next<>nil) and (pwandert^.bei<von) do pwandert:=pwandert^.next;
+while (pwandert^.next<>nil) and (pwandert^.bei<=bis) do begin
+      verfol.weiter(pwandert^.bei);
+      pwandert:=pwandert^.next end;
+end;
+begin
+for trfile:=1 to filenr do if trfile in dabei then
+ with fil[trfile], liste[trfile] do begin
+   mat.fn:=trfile;
+   verfol.beginn(trfile); if abbruch then exit;
+   pwandert:=selbst^;
+   if bloecke then begin
+      wandert:=block^;
+      while wandert^.next<>nil do begin
+         punkteblocktriggern(wandert^.von,wandert^.bis);
+         if verfol.aufhoeren then goto genug;
+         wandert:=wandert^.next end
+      end
+              else punkteblocktriggern(0,laenge);
+ genug:
+   nimm(aut^,verfol.gesamt);
+   if abbruch then exit;
+   end;
+piep;
+end;
+
+constructor gelesen.neu;
+var  eingabe:text;
+     dateiname:string80;
+     autfil:array[1..maxfiles] of ^triggerliste;
+     nfil:array[1..maxfiles] of exword;
+     trfile:byte;
+     fn:exword; te:extended;
+     znr:grossint;
+label abbruch;
+begin
+triggerung.neu; tr:=maxkanal;
+dateiname:=readstring('File name and path','trigger.txt');
+name:='from file '+dateiname;
+for trfile:=1 to filenr do begin new(autfil[trfile]); nfil[trfile]:=0 end;
+znr:=0;
+assign(eingabe,dateiname);
+reset(eingabe);
+while not eof(eingabe) do begin
+   inc(znr); read(eingabe,fn,te);
+   if (ioresult=0) and (fn in [1..filenr]) then begin
+      inc(nfil[fn]); autfil[fn]^[nfil[fn]]:=messwext(te) end
+      else
+      if znr>3 then begin
+         fehler('Invalid line '+wort(znr)+' in import file'); warte; goto abbruch
+         end;
+   readln(eingabe);
+   end;
+abbruch:close(eingabe);
+for trfile:=1 to filenr do begin
+   fil[trfile].nimm(autfil[trfile]^,nfil[trfile]);
+   dispose(autfil[trfile]);
+   end;
+end;
+
+procedure gelesen.triggern (dabei:filemenge);
+begin end;
 
 constructor aequidistant.neu;
 begin
-triggerung.neu;
+triggerung.neu; tr:=maxkanal;
 anfa:=messwext(readext('Start [ms]',0,1,1));
 dist:=messwext(readext('Distance [ms]',0,1,1));
 name:=extwort(extzeit(anfa),3,1)+' ms + equidistant '
@@ -741,7 +825,7 @@ procedure aequidistant.blocktriggern (von,bis:messwert);
 var hierbei:messwert;
 begin
 hierbei:=anfa+von;
-while (bis>=hierbei) and not verfol.aufhoeren do begin
+while (bis>hierbei) and not verfol.aufhoeren do begin
    verfol.weiter(hierbei);
    hierbei:=hierbei+dist;
    end;
@@ -1251,7 +1335,7 @@ end;
 
 { asciifilter }
 
-constructor asciifilter.neu(trigliste:char; aname:string);
+constructor asciifilter.neu(aname:string; trigliste:char);
 var   afile:text;
       i:grossint; dummy:extended;
       atmax:ywert;
@@ -1603,8 +1687,10 @@ procedure streamget (var s:tbufstream);
 var   ind:char;
 begin
 s.read(akttrkan,sizeof(akttrkan));
-for ind:='A' to listmax do begin
-dispose(tliste[ind],alt); tliste[ind]:=triggerungzg(s.get); end;
+if komp84 then
+   for ind:='A' to 'H' do begin dispose(tliste[ind],alt); tliste[ind]:=triggerungzg(s.get); end
+          else
+   for ind:='A' to listmax do begin dispose(tliste[ind],alt); tliste[ind]:=triggerungzg(s.get); end;
 end;
 
 procedure triggeruebersicht;
@@ -1645,19 +1731,20 @@ begin
 ueberschrift(false,'Trigger Mode','Info',farbe3);
 writeln('Trigger channel: ',akttrkan,' (',schriftliste[akttrkan],')',lfcr);
 triggeruebersicht; writeln;
-writeln('Modes: r = Rising Threshold       f = Falling Threshold',lfcr,
-        '       x = Maximum > Gl. Average  n = Minimum < Gl. Average',lfcr,
-        '       a = Maximum in Window      i = Minimum in Window',lfcr,
-        '       > = Entering Window        < = Leaving Window',lfcr,
-        '       p = User Defined           e = Equidistant              u = Undefined');
-writeln;
-gotoxy(1,19); zwischen('Dialogue',farbe3);
-window(1,23,80,zeilmax);
+writeln('Modes:   r = Rising Threshold              f = Falling Threshold',lfcr,
+        '       x/a = Max. > Gl. Av./in Window    n/i = Min. < Gl. Av./in Window',lfcr,
+{        '       a = Maximum in Window          i = Minimum in Window',lfcr,}
+        '         > = Entering Window               < = Leaving Window',lfcr,
+        '         p = User Defined                  e = Equidistant',lfcr,
+        '         t = Read from text file           u = Undefined');
+{writeln;}
+gotoxy(1,21); zwischen('Dialogue',farbe3);
+window(1,25,80,zeilmax);
 ta:=upcase(readchar('Trigger list','A'));
 if not (ta in['A'..listmax]) then begin
    fehler('Undefined trigger list'); warte; exit end;
 artbu:=readchar('Trigger mode','r');
-if not (artbu in ['u','r','f','x','n','p','a','i','e','>','<']) then begin
+if not (artbu in ['u','r','f','x','n','p','a','i','e','>','<','t']) then begin
    fehler('Undefined trigger mode'); warte; exit end;
 dispose(tliste[ta],alt);
 case artbu of
@@ -1668,6 +1755,7 @@ case artbu of
    'i':tliste[ta]:=new(fensterminimumzg,neu);
    '<':tliste[ta]:=new(austrittzg,neu); '>':tliste[ta]:=new(eintrittzg,neu);
    'e':tliste[ta]:=new(aequidistantzg,neu);
+   't':tliste[ta]:=new(gelesenzg,neu);
    end;
 with tliste[ta]^ do name:=readstring('Label',name);
 end;
@@ -1734,7 +1822,7 @@ until false;
 end;
 
 procedure triggerfile;
-const filename:string80='trigger.dat';
+const filename:string80='trigger.txt';
       ta:char='A';
 var   ausgabe:text;
       fn,i,j:exword;
@@ -1752,7 +1840,11 @@ filename:=readstring('File name and path',filename);
 if fileschonda(filename) then
    if upcase(readchar('Overwrite? (Y/N)','N'))<>'Y' then exit;
 window(1,3,80,zeilmax); clrscr;
-ykanaele.kn:=1; ykanaele.k[1]:=tliste[ta]^.tr;
+if tliste[ta]^.tr=maxkanal then ykanaele.kn:=0
+                           else begin
+                           ykanaele.kn:=1;
+                           ykanaele.k[1]:=tliste[ta]^.tr;
+                           end;
 ykanaele.lesen(8,farbe3);
 assign(ausgabe,filename);
 rewrite(ausgabe);
@@ -1778,18 +1870,16 @@ end;
 begin
 repeat
    ueberschrift(false,'Trigger Manager','Info',farbe2);
-   writeln('Trigger Channel    : ',akttrkan,' (',schriftliste[akttrkan],')');
-   writeln('Trigger Conditions : ',bloecketext[bloecke],', ','max. ',triggeranz,
-      ' trigger points, start at ',triggeranf,'. event,');
-   writeln('                     each ',triggerabz,'. event, skipping ',
-      zeit(triggerdst),' ms after each trigger point');
+   writeln('Channel   : ',akttrkan,' (',schriftliste[akttrkan],')');
+   writeln('Conditions: ',bloecketext[bloecke],',','max. ',triggeranz,
+      ',start at ',triggeranf,'.,each ',triggerabz,'. event,skipping ',
+      zeit(triggerdst),'ms');
    writeln;
    triggeruebersicht;
    writeln;
    zwischen('Menu',farbe2);
-   writeln(lfcr,'    h...Channel              t...Triggering',
-           lfcr,'    o...Mode                 e...Export Data',
-           lfcr,'    c...Conditions           b...Create Blocks         m...Main Menu');
+   writeln(lfcr,'  h...Channel     c...Conditions    b...Create Blocks   e...Export Data',
+           lfcr,'  o...Mode        t...Triggering                        m...Main Menu');
    writeln;
    zwischen('Dialogue',farbe2);
    writeln;
@@ -1807,6 +1897,7 @@ end;
 begin
 
 registertype(rkeine);    registertype(rpunkte);
+registertype(rgelesen);
 registertype(rhoch);     registertype(rrunter);
 registertype(rminimum);  registertype(rmaximum);
 registertype(rfenstermaximum);
