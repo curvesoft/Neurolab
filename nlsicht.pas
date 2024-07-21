@@ -1,4 +1,5 @@
 { Borland-Pascal 7.0 / FPC 2.0 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit nlsicht;
 
@@ -89,11 +90,11 @@ begin
 ueberschrift(false,'View Data','Menu',farbe3);
 gotoxy(1,6);
 writeln(lfcr,'  b...Create Blocks from Trigger Lists',
-        lfcr,'  q...Quit');
+        lfcr,'  x...Exit');
 gotoxy(1,19); zwischen('Dialogue',farbe3); writeln;
 case upcase(readcharim('Menu point','q')) of
    'B':nltrigg.autoblock(aktfile);
-   'Q':exit;
+   'X':exit;
    end;
 end;
 
