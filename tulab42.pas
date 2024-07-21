@@ -1,4 +1,5 @@
-{ Borland-Pascal 7.0 / FPC 2.0 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit  tulab42;
 
@@ -37,6 +38,29 @@ type  gainfeld=packed array[0..15] of byte;
         ffu:array[481..512] of byte
         end;
 
+function klammereinheit (aus:string) :string;
+var i:byte;
+begin
+klammereinheit:='';
+i:=pos('[',aus); if i=0 then exit;
+delete(aus,1,i);
+i:=pos(']',aus); if i=0 then exit;
+delete(aus,i,length(aus)-i+1);
+schieben(aus);
+klammereinheit:=aus;
+end;
+
+function ohneklammereinheit (aus:string) :string;
+var i,j:byte;
+begin
+ohneklammereinheit:=aus;
+i:=pos('[',aus); if i=0 then exit;
+j:=pos(']',aus); if j=0 then exit;
+delete(aus,i,j-i+1);
+schieben(aus);
+ohneklammereinheit:=aus;
+end;
+
 procedure kopf (const name:fnamestr; var kodaten:kopfdaten);
 var   ko:header;
       i:byte;
@@ -63,13 +87,13 @@ if ko.id<>'TurboLab' then begin
       bytes:=nkan*2;
       for i:=0 to nkan-1 do with k[i] do begin
          nr:=i;
-         name:=ko.names[i];
+         name:=ohneklammereinheit(ko.names[i]); einheit:=klammereinheit(ko.names[i]);
          if name='' then name:=wort(i)+'.Chan.';
          if ko.nl='NeuroLab' then faktor1:=ko.nlgain[i]
                              else faktor1:=10/ko.gain[i]/maxsample;
          faktor2:=1;
-         if ko.nl='NeuroLab' then einheit:='U'
-                             else einheit:='V';
+         if einheit='' then if ko.nl='NeuroLab' then einheit:='U'
+                                                else einheit:='V';
          offs:=i*2;
          dattyp:=6;
          bits:=12;
