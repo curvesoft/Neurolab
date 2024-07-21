@@ -285,9 +285,8 @@ end;
 procedure analogdaten;
 procedure superposition;
 const von:messwert=0;       bis:messwert=1000;
-      akttrind:char='A';    aktfile:byte=1;
+      akttrind:char='A';
 var   laenge:grossint;
-      i:grossint;
       chpuff:char;
       grafik:grafiksuperposition;
 begin
@@ -369,7 +368,7 @@ const von=0;
       akttrind:char='A';
 var   weis:triggerweiser;
       i,laenge,platz:grossint;
-      bis,abst:messwert;
+      bis:messwert;
       chpuff:char;
       grafik:grafikphasenaverage;
 begin

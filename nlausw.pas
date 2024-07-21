@@ -321,7 +321,7 @@ with kanaele do for j:=1 to kn do begin
 end;
 
 procedure grafikaverage.bild;
-var   x,y,i,j:longint;
+var   x,y,j:longint;
       fleinheit:einheittyp;
 
 begin
@@ -420,7 +420,7 @@ with kanaele do for j:=1 to kn do begin
 end;
 
 procedure grafikphasenaverage.bild;
-var   x,y,i,j:longint;
+var   x,y,j:longint;
       fleinheit:einheittyp;
 
 begin

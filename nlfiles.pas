@@ -65,8 +65,6 @@ end;
 procedure neufile;
 var   ganz:pathstr;
       i:byte;
-      hilf:listenzeiger; philf:punktzeiger;
-      j:char;
 
 begin
 ueberschrift(false,'Open File','Dialogue',farbe3);
