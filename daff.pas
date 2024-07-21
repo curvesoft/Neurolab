@@ -1,4 +1,5 @@
 { Borland-Pascal 7.0  / FPC 2.0 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit daff;
 
@@ -16,7 +17,7 @@ uses   crt, dos, objects,
 const  samplebit=25;
        maxsample=(1 shl samplebit)-1;     minsample=-maxsample;
        sampleoffset=1 shl samplebit;
-       richtung:(vow,ruw,mit)=vow;
+       richtung:(vow,ruw,mit)=mit;
        maxkan=16;
        dafftypen:set of 0..23 = [4,6,7,19];
 
@@ -204,6 +205,7 @@ procedure schliesse;
 procedure ausserbetrieb;
 
 procedure seqschreibe (zahl:sample);
+procedure seqschreibeint16 (zahl:sample);
 procedure seqoeffne;
 procedure seqschliesse;
 
@@ -226,6 +228,7 @@ type   pufferbyte=packed array[0..puffermax-1] of byte;
 var    s:tbufstream;
        pufferb,seqpufferb:^pufferbyte;
        pufferbyteanfang,pufferbyteende,seqbytei:grossint;
+       datenweg:boolean;
        kopfbytelaenge, filebyteende:grossint;
        kan, blbytes:byte;
        koffs:array[0..maxkan-1] of byte;
@@ -365,29 +368,41 @@ filebyteende:=ko.anzahl*ko.bytes;
 assign(daten,name);
 {$ifdef fpc}
 if zustand=zu then zustand:=offen;
+datenweg:=false;
 {$else}
 reset(daten,1);
 tulabfehler:=ioresult>0;
-if not tulabfehler then zustand:=offen
+if not tulabfehler then begin zustand:=offen; datenweg:=false end
                    else begin
-   writeln(lfcr); fehler('No access to file "'+name+'".'); warte end;
+   writeln(lfcr); fehler('No access to file "'+name+'".'); warte; datenweg:=true end;
 {$endif}
 pufferbyteanfang:=0;  pufferbyteende:=0;
 end;
 
 procedure seqoeffne;
 begin
+{$ifndef fpc}
 reset(seqdaten,1);
 seek(seqdaten,filesize(seqdaten));
+{$endif}
 new(seqpufferb);
 seqbytei:=-2;
 end;
 
 procedure seqschliesse;
-var   lenpuffer:word;
+var   lenpuffer:exword;
 begin
+{$ifdef fpc}
+if seqbytei>=0 then begin
+   reset(seqdaten,1);
+   seek(seqdaten,filesize(seqdaten));
+   blockwrite(seqdaten,seqpufferb^,seqbytei+2,lenpuffer);
+   close(seqdaten);
+   end;
+{$else}
 if seqbytei>=0 then blockwrite(seqdaten,seqpufferb^,seqbytei+2,lenpuffer);
 close(seqdaten);
+{$endif}
 dispose(seqpufferb);
 end;
 
@@ -414,14 +429,42 @@ end;
 
 procedure seqschreibe (zahl:sample);
 const  sampleshift=samplebit-12+1;
-var    lenpuffer:word;
+var    lenpuffer:exword;
        intzeiger:^word;
 begin
 inc(seqbytei,2);
 intzeiger:=addr(seqpufferb^[seqbytei]);
 zahl:=(zahl+sampleoffset) shr sampleshift; intzeiger^:=zahl;
 if seqbytei+2>=puffermax-1 then begin
+   {$ifdef fpc}
+   reset(seqdaten,1);
+   seek(seqdaten,filesize(seqdaten));
+   {$endif}
    blockwrite(seqdaten,seqpufferb^,seqbytei+2,lenpuffer);
+   {$ifdef fpc}
+   close(seqdaten);
+   {$endif}
+   seqbytei:=-2;
+   end;
+end;
+
+procedure seqschreibeint16 (zahl:sample);
+const  sampleshift=samplebit-16+1;
+var    lenpuffer:exword;
+       intzeiger:^integer;
+begin
+inc(seqbytei,2);
+intzeiger:=addr(seqpufferb^[seqbytei]);
+zahl:=(zahl) shr sampleshift; intzeiger^:=zahl;
+if seqbytei+2>=puffermax-1 then begin
+   {$ifdef fpc}
+   reset(seqdaten,1);
+   seek(seqdaten,filesize(seqdaten));
+   {$endif}
+   blockwrite(seqdaten,seqpufferb^,seqbytei+2,lenpuffer);
+   {$ifdef fpc}
+   close(seqdaten);
+   {$endif}
    seqbytei:=-2;
    end;
 end;
@@ -439,8 +482,10 @@ case richtung of
 reset(daten,1);
 tulabfehler:=ioresult>0;
 if not tulabfehler then zustand:=offen
-                   else begin
-   writeln(lfcr); fehler('No access to data file.'); warte; exit end;
+                   else if not datenweg then begin
+                       writeln(lfcr); fehler('No access to data file.'); warte;
+                       datenweg:=true;
+                       exit end;
 {$endif}
 seek(daten,anfang+kopfbytelaenge);
 blockread(daten,pufferb^,puffermax,lenpuffer);
@@ -449,7 +494,10 @@ if not tulabfehler then begin
    pufferbyteanfang:=anfang;
    pufferbyteende:=pufferbyteanfang+lenpuffer end
                    else begin
-   writeln(lfcr); fehler('No access to data file.'); warte;
+   if not datenweg then begin
+      writeln(lfcr); fehler('No access to data file.'); warte;
+      datenweg:=true;
+      end;
    pufferbyteanfang:=byteposition;
    pufferbyteende:=byteposition+puffermax;
    zustand:=zu;
