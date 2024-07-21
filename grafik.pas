@@ -1,4 +1,5 @@
-{Borland-Pascal 7.0 / FPC 2.0 }
+{Borland-Pascal 7.0 / FPC 3.2.2 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit  grafik;
 
