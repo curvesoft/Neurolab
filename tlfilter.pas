@@ -1,4 +1,5 @@
-{ Borland-Pascal 7.0 / FPC 2.0 }
+{ Borland-Pascal 7.0 / FPC 2.4 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit  tlfilter;
 
@@ -549,18 +550,20 @@ end;
 procedure einheittyp.handlich;
 type  string1=string[1];
 var   n:integer;
+      x:extended;
 procedure setz (mal:extended; davor:string1);
 begin
 faktor:=faktor*mal; vor:=davor;
 end;
 begin
+x:=faktor*maxsample*1.00001; if x<=1E-9 then x:=1E-9;
 if (sekunde=0) and (anfang='') then schwierig
                                else begin
-   n:=round(log(faktor*maxsample*1.00001)-0.5);
+   n:=round(log(x)-0.5);
    case n-1 of
      -11,-10, -9:setz(1E12,'p');
       -8, -7, -6:setz( 1E9,'n');
-      -5, -4, -3:setz( 1E6,'æ');
+      -5, -4, -3:setz( 1E6,'u');
       -2, -1,  0:setz( 1E3,'m');
        1,  2,  3:setz( 1E0,'');
        4,  5,  6:setz(1E-3,'k');
@@ -574,8 +577,10 @@ end;
 
 procedure einheittyp.schwierig;
 var   n:grossint;
+      x:extended;
 begin
-n:=pred(trunc(log(faktor*maxsample*1.00001))); if n<0 then dec(n,2);
+x:=faktor*maxsample*1.00001; if x<=1E-9 then x:=1E-9;
+n:=pred(trunc(log(x))); if n<0 then dec(n,2);
 n:=3*(n div 3);
 if n>0 then faktor:=faktor/xpot(n) else faktor:=faktor*xpot(-n);
 anfang:='1E'+wort(n); sekunde:=0;
@@ -843,7 +848,7 @@ end;
 constructor malfaktor.neu (malfak:extended);
 begin
 float:=malfak;
-name:='*'+extwort(malfak,3,2);
+name:='*'+extfwort(malfak,3);
 end;
 
 constructor malfaktor.load (var s:tbufstream);
@@ -868,7 +873,7 @@ end;
 constructor streckung.neu (k:byte; maxspannung:extended);
 begin
 float:=belegungsliste[k].faktor*maxsample/abs(maxspannung);
-name:='ù'+extwort(float,3,2);
+name:='**'+extfwort(float,3);
 end;
 
 constructor streckung.load (var s:tbufstream);
@@ -1601,7 +1606,7 @@ var puffer:string;
 begin
 bei:=filteranfang[k]; puffer:='';
 while bei<>nil do begin insert(bei^.name+' '#26' ',puffer,0); bei:=bei^.next end;
-filterzeile:=+puffer+'#'+wort(k);
+filterzeile:=puffer+'#'+wort(k);
 end;
 
 procedure einheitensetzen (frequenz:extended);
