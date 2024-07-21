@@ -1,4 +1,5 @@
-{ Borland-Pascal 7.0 / FPC 2.0 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
+{$ifdef fpc} {$mode TP} {$endif}
 
 unit nlausw;
 
@@ -10,7 +11,7 @@ unit nlausw;
 
 interface
 
-uses  crt,      graph,    daff,wavpcm,tulab42,  nlrahmen,
+uses  crt,       graph,   daff,wavpcm,tulab42,  nlrahmen,
       dos,      grafik,   tlfilter,      nltrigg,
       bequem,   plotter,  tlfiles,
                 nlgrafik;
@@ -318,7 +319,7 @@ with kanaele do for j:=1 to kn do begin
 end;
 
 procedure grafikaverage.bild;
-var   x,y,i,j:longint;
+var   x,y,j:longint;
       fleinheit:einheittyp;
 
 begin
@@ -417,7 +418,7 @@ with kanaele do for j:=1 to kn do begin
 end;
 
 procedure grafikphasenaverage.bild;
-var   x,y,i,j:longint;
+var   x,y,j:longint;
       fleinheit:einheittyp;
 
 begin
