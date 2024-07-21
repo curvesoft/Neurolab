@@ -18,9 +18,7 @@ uses  crt, dos,           daff,wavpcm,tulab42,nlrahmen,           grafik,
 const version='9.20';  paramver='8.5'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen und komp84 abschaffen!}
       {$IFDEF DPMI}   plattform='DPMI  BP7'; {$ENDIF}
       {$IFDEF MSDOS}  plattform='MSDOS BP7'; {$ENDIF}
-      {$IFDEF WIN32} {$IFDEF VER2_4} plattform='Win32 2.4'; {$ELSE} plattform='Win32 2.0'; {$ENDIF}{$ENDIF}
-      {$IFDEF WIN64} {$IFDEF VER2_4} plattform='Win64 2.4'; {$ELSE} plattform='Win64 2.0'; {$ENDIF}{$ENDIF}
-      {$IFDEF LINUX} {$IFDEF VER2_4} plattform='Linux 2.4'; {$ELSE} plattform='Linux 2.0'; {$ENDIF}{$ENDIF}
+      {$IFDEF fpc}    plattform={$I %FPCTARGET%}+' '+{$I %FPCVERSION%}; {$ENDIF}
       {$IFDEF FPC} maxavail=9223372036854775807; memavail=maxavail; {$ENDIF}
       {$ifdef fpc} nlbext='.nlx'; {$else} nlbext='.nlb'; {$endif}
       id:string[8]='Neurl'+paramver;
@@ -869,7 +867,7 @@ clrscr;
 textcolor(cyan);
 gotoxy(1,6);
 writeln(lfcr,'':16,'------------------------------------------',
-        lfcr,'':16,'------   NEUROLAB ',version:4,' (',plattform:9,')  ------',
+        lfcr,'':16,'----   NEUROLAB ',version:4,' (',plattform:13,')  ----',
         lfcr,'':16,'------------------------------------------',
         lfcr,'':16,'------  by B. Hedwig and M. Knepper ------',
         lfcr,'':16,'---------- Cambridge / Wiesbaden ---------',

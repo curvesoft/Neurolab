@@ -2,6 +2,7 @@
 
 unit  bequem;
 
+{$ifdef fpc} {$endif}
 {$IFDEF MSDOS}
 {$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X+}
 {$ELSE}
