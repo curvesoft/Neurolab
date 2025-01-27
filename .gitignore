@@ -2,3 +2,5 @@
 *.obj
 *.ppu
 *.o
+backup/
+lib/
