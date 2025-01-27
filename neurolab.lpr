@@ -5,9 +5,9 @@ PROGRAM neurolab;
 {Authors: Berthold Hedwig & Marko Knepper}
 
 {$IFDEF MSDOS}
-{$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X-} //{$M 65520,130000,655360}
+{$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X-} {$M 65520,130000,655360}
 {$ELSE}
-{$A+,B-,E+,F-,G+,I-,N+,P+,T+,V+,X-}//{$M 65520,0}
+{$A+,B-,E+,F-,G+,I-,N+,P+,T+,V+,X-}{$M 65520,0}
 {$ENDIF}
 
 USES
@@ -79,7 +79,7 @@ VAR
     END;
 
   BEGIN
-    showtitle(False, 'Calibration', 'Info', farbe2);
+    ueberschrift(False, 'Calibration', 'Info', farbe2);
     i := 0;
     REPEAT
       window(1, 3, 38, 12);
@@ -158,13 +158,13 @@ VAR
       ke, k, i :     BYTE;
       fi :           string80;
     BEGIN
-      showtitle(False, 'Filters', 'Info', farbe3);
+      ueberschrift(False, 'Filters', 'Info', farbe3);
       belegungzeigen;
       gotoxy(1, 15);
       zwischen('Dialogue', farbe3);
       writeln;
       ke := readint('Input Channel No. (0-' + wort(pred(kan)) + ')', 0);
-      IF NOT (ke IN [0..kan + maxfilters - 1]) THEN
+      IF NOT (ke IN [0..kan + filtermax - 1]) THEN
       BEGIN
         fehler('Undefined channel no.');
         warte;
@@ -181,8 +181,8 @@ VAR
       clreol;
       k := kan;
       WHILE filterdrin(k) AND (k < maxkanal) DO Inc(k);
-      k := readint('Output Channel No. (' + wort(kan) + '-' + wort(kan + maxfilters - 1) + ')', k);
-      IF NOT ((k IN [kan..kan + maxfilters - 1]) AND (k <> ke)) THEN
+      k := readint('Output Channel No. (' + wort(kan) + '-' + wort(kan + filtermax - 1) + ')', k);
+      IF NOT ((k IN [kan..kan + filtermax - 1]) AND (k <> ke)) THEN
       BEGIN
         fehler('Valid output channel no. expected');
         warte;
@@ -213,21 +213,24 @@ VAR
           'f' : filtersetz(new(freqfilterzg, neu(
               upcase(readchar('Frequency: for Trigger List (A-' + listmax + ')', 'A')))), k);
           'g' : filtersetz(new(glattzg, neu(readext('Gliding Average: Width [ms]', 1, 3, 1))), k);
-          'h' : filtersetz(new(hochpasszg, neu(readint('High-Pass: Frequency (min. ' +
-              wort(round(genau * pi / weite * fre)) + ' Hz)', round(fre / 2)))), k);
+          'h' : filtersetz(new(hochpasszg, neu(
+              readint('High-Pass: Frequency (min. ' + wort(round(genau * pi / weite * fre)) +
+              ' Hz)', round(fre / 2)))), k);
           'i' : filtersetz(new(intervallfilterzg, neu(
               upcase(readchar('Interval: for Trigger List (A-' + listmax + ')', 'A')))), k);
           'j' : filtersetz(new(punktefilterzg, neu(
               upcase(readchar('Points: Trigger List (A-' + listmax + ')', 'A')))), k);
           'k' : filtersetz(new(arccoszg, neu), k);
-          'l' : filtersetz(new(tiefpasszg, neu(readint('Low-Pass: Frequency (min. ' +
-              wort(round(genau * pi / weite * fre)) + ' Hz)', round(fre / 2)))), k);
+          'l' : filtersetz(new(tiefpasszg, neu(
+              readint('Low-Pass: Frequency (min. ' + wort(round(genau * pi / weite * fre)) +
+              ' Hz)', round(fre / 2)))), k);
           'm' : filtersetz(new(maxminzg, neu(readext('Max - Min: Width'#29' [ms]', 1, 3, 1))), k);
           'n' : filtersetz(new(glintzg, neu(readext('Gliding Integration: Width [ms]', 1, 3, 1))), k);
           'o' : BEGIN
             einheitensetzen(fre);
-            filtersetz(new(offsetzg, neu(k, round(readext('Offset: Value [' +
-              belegungsliste[k].einhwort + ']', 0, 3, 1) / belegungsliste[k].faktor))), k);
+            filtersetz(new(offsetzg, neu(k, round(
+              readext('Offset: Value [' + belegungsliste[k].einhwort + ']', 0, 3, 1) /
+              belegungsliste[k].faktor))), k);
           END;
           'p' : filtersetz(new(polygonfilterzg, neu(
               upcase(readchar('Polygon: for Trigger List (A-' + listmax + ')', 'A')))), k);
@@ -247,9 +250,9 @@ VAR
           'v' : filtersetz(new(absolutzg, neu), k);
           'w' : filtersetz(new(intzg, neu), k);
           'x' : filtersetz(new(diffilterzg, neu(upcase(readchar('Time Difference: Reference List', 'A')),
-              upcase(readchar('                 Event List', 'B')), readint(
-              '                 Time Window [ms]', 100), upcase(
-              readchar('                 n=nearest, f=forward, b=backward', 'n')))), k);
+              upcase(readchar('                 Event List', 'B')),
+              readint('                 Time Window [ms]', 100),
+              upcase(readchar('                 n=nearest, f=forward, b=backward', 'n')))), k);
           'y' : BEGIN
             einheitensetzen(fre);
             filtersetz(new(streckungzg, neu(k, readext('y-Resolution: max value [' +
@@ -260,17 +263,16 @@ VAR
           '+' : filtersetz(new(additionzg, neu(readint('Summation: Channel No', 0))), k);
           '=' : filtersetz(new(korrelationzg, neu(readint('Correlation: Channel No', 0),
               readext('Correlation: Width [ms]', 1, 3, 1))), k);
-          '#' : filtersetz(new(zaehltfilterzg,
-              neu(upcase(readchar('Count: Trigger List (A-' + listmax + ')', 'A')))), k);
+          '#' : filtersetz(new(zaehltfilterzg, neu(upcase(readchar('Count: Trigger List (A-' + listmax + ')', 'A')))), k);
           '>' : filtersetz(new(asciifilterzg, neu(readstring('ASCII Data: File Name', 'list.asc'),
               upcase(readchar('            Assign to Trigger List (A-' + listmax + ')', 'A')))), k);
           '/' : filtersetz(new(winkelzg, neu(readint('x-y-angle: x channel No', 0))), k);
           '.' : BEGIN
             einheitensetzen(fre);
-            filtersetz(new(digitalzg, neu(k, round(readext('Pulse counter: Threshold [' +
-              belegungsliste[k].einhwort + ']', 500, 3, 1) / belegungsliste[k].faktor),
-              readstring('               Pulse separation SI unit', '1'),
-              readext('               Pulse separation value', 1, 5, 3))), k);
+            filtersetz(new(digitalzg, neu(k,
+              round(readext('Pulse counter: Threshold [' + belegungsliste[k].einhwort
+              + ']', 500, 3, 1) / belegungsliste[k].faktor), readstring(
+              '               Pulse separation SI unit', '1'), readext('               Pulse separation value', 1, 5, 3))), k);
           END
 
           ELSE
@@ -282,7 +284,7 @@ VAR
   BEGIN
     indexalt := kan;
     REPEAT
-      showtitle(False, 'Filter Manager', 'Info', farbe2);
+      ueberschrift(False, 'Filter Manager', 'Info', farbe2);
       liste.zeigen(11, indexalt);
       writeln;
       zwischen('Menu', farbe2);
@@ -332,7 +334,7 @@ VAR
   VAR
     i, j : LONGINT;
   BEGIN
-    showtitle(False, 'Data List', 'Info', farbe2);
+    ueberschrift(False, 'Data List', 'Info', farbe2);
     fileliste;
     gotoxy(1, 19);
     zwischen('Dialogue', farbe2);
@@ -391,7 +393,7 @@ VAR
       chpuff : CHAR;
       grafik : grafiksuperposition;
     BEGIN
-      showtitle(False, 'Superposition', 'Info', farbe3);
+      ueberschrift(False, 'Superposition', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 18);
       zwischen('Dialogue', farbe3);
@@ -438,7 +440,7 @@ VAR
       chpuff :        CHAR;
       grafik :        grafikaverage;
     BEGIN
-      showtitle(False, 'Averaging', 'Info', farbe3);
+      ueberschrift(False, 'Averaging', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 18);
       zwischen('Dialogue', farbe3);
@@ -525,7 +527,7 @@ VAR
       chpuff :           CHAR;
       grafik :           grafikphasenaverage;
     BEGIN
-      showtitle(False, 'Phase Dependent Averaging', 'Info', farbe3);
+      ueberschrift(False, 'Phase Dependent Averaging', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 18);
       zwischen('Dialogue', farbe3);
@@ -612,7 +614,7 @@ VAR
       liste :  filterliste;
       grafik : grafikxy;
     BEGIN
-      showtitle(False, 'X-Y-Diagram', 'Info', farbe3);
+      ueberschrift(False, 'X-Y-Diagram', 'Info', farbe3);
       belegungzeigen;
       writeln;
       liste.zeigen(7, kan);
@@ -623,7 +625,7 @@ VAR
       Write(#13);
       clreol;
       puff := readint('X-channel', kx);
-      IF NOT (puff IN [0..kan + maxfilters - 1]) THEN
+      IF NOT (puff IN [0..kan + filtermax - 1]) THEN
       BEGIN
         fehler('Undefined channel no.');
         warte;
@@ -632,7 +634,7 @@ VAR
       ELSE
         kx := puff;
       puff := readint('Y-channel', ky);
-      IF NOT (puff IN ([0..kan + maxfilters - 1]) - [kx]) THEN
+      IF NOT (puff IN ([0..kan + filtermax - 1]) - [kx]) THEN
       BEGIN
         fehler('Undefined channel no.');
         warte;
@@ -659,11 +661,11 @@ VAR
       puff :       grossint;
       liste :      filterliste;
     BEGIN
-      showtitle(False, 'Amplitude Histogram', 'Info', farbe3);
+      ueberschrift(False, 'Amplitude Histogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
-      window(1, 16, 80, rowmax);
+      window(1, 16, 80, zeilmax);
       charpuff := upcase(readchar('Trigger List    ', ref));
       IF NOT (charpuff IN ['A'..listmax]) THEN
       BEGIN
@@ -672,7 +674,7 @@ VAR
         exit;
       END;
       ref := charpuff;
-      window(1, 3, 80, rowmax);
+      window(1, 3, 80, zeilmax);
       clrscr;
       textcolor(farbenormal);
       belegungzeigen;
@@ -684,9 +686,9 @@ VAR
       WHILE NOT liste.ende AND (readkey IN ['Y', 'y', 'J', 'j']) DO liste.weiterzeigen;
       Write(#13);
       clreol;
-      window(1, 22, 80, rowmax);
+      window(1, 22, 80, zeilmax);
       puff := readint('Channel   ', kanal);
-      IF NOT (puff IN [0..kan + maxfilters - 1]) THEN
+      IF NOT (puff IN [0..kan + filtermax - 1]) THEN
       BEGIN
         fehler('Undefined channel no.');
         warte;
@@ -720,7 +722,7 @@ VAR
 
   BEGIN
     REPEAT
-      showtitle(False, 'Analog Data', 'Menu', farbe2);
+      ueberschrift(False, 'Analog Data', 'Menu', farbe2);
       gotoxy(1, 7);
       writeln('          a...Averaging',
         lfcr, '          p...Phase-Dependent Averaging',
@@ -756,7 +758,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      showtitle(False, 'Interval Histogram', 'Info', farbe3);
+      ueberschrift(False, 'Interval Histogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -795,7 +797,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      showtitle(False, 'Auto Correlogram', 'Info', farbe3);
+      ueberschrift(False, 'Auto Correlogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -835,7 +837,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      showtitle(False, 'Cross Correlogram', 'Info', farbe3);
+      ueberschrift(False, 'Cross Correlogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -884,7 +886,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      showtitle(False, 'PST-Histogram', 'Info', farbe3);
+      ueberschrift(False, 'PST-Histogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -932,7 +934,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      showtitle(False, 'Latency Histogram', 'Info', farbe3);
+      ueberschrift(False, 'Latency Histogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -982,7 +984,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      showtitle(False, 'Phase Histogram', 'Info', farbe3);
+      ueberschrift(False, 'Phase Histogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -1033,7 +1035,7 @@ VAR
 
   BEGIN
     REPEAT
-      showtitle(False, 'Interval Data', 'Info', farbe2);
+      ueberschrift(False, 'Interval Data', 'Info', farbe2);
       triggeruebersicht;
       gotoxy(1, 13);
       zwischen('Menu', farbe2);
@@ -1235,7 +1237,7 @@ BEGIN
   gotoxy(1, 20);
   holen;
   REPEAT
-    showtitle(False, 'Main Menu', 'Info', farbe1);
+    ueberschrift(False, 'Main Menu', 'Info', farbe1);
     {$ifdef fpc}
    writeln('Version           :   ',version:4,' (',plattform:5,')');
     {$else}
@@ -1283,7 +1285,7 @@ BEGIN
         'C' : verstaerkungen;
         'M' : filterung;
         'L' : listen;
-        'V' : viewdata;
+        'V' : sichten;
         'T' : nltrigg.manager;
         'S' : confsichern;
         {$ifndef fpc}

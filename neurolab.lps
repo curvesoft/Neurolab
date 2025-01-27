@@ -8,9 +8,10 @@
       <Unit>
         <Filename Value="neurolab.lpr"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="56"/>
-        <CursorPos X="28" Y="65"/>
+        <TopLine Value="906"/>
+        <CursorPos Y="931"/>
         <UsageCount Value="62"/>
         <Loaded Value="True"/>
       </Unit>
@@ -113,10 +114,8 @@
       <Unit>
         <Filename Value="tlfilter.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="14"/>
-        <TopLine Value="1282"/>
-        <CursorPos X="37" Y="1403"/>
+        <CursorPos X="25" Y="16"/>
         <UsageCount Value="62"/>
         <Loaded Value="True"/>
       </Unit>
@@ -165,14 +164,6 @@
     </Units>
     <JumpHistory HistoryIndex="29">
       <Position>
-        <Filename Value="tulab42.pas"/>
-        <Caret Line="18" Column="19"/>
-      </Position>
-      <Position>
-        <Filename Value="tulab42.pas"/>
-        <Caret Line="154" Column="3" TopLine="149"/>
-      </Position>
-      <Position>
         <Filename Value="tlfilter.pas"/>
         <Caret Line="528" Column="11" TopLine="515"/>
       </Position>
@@ -207,10 +198,6 @@
       <Position>
         <Filename Value="nlsicht.pas"/>
         <Caret Line="19" Column="19"/>
-      </Position>
-      <Position>
-        <Filename Value="nlausw.pas"/>
-        <Caret Line="22" Column="26" TopLine="256"/>
       </Position>
       <Position>
         <Filename Value="nlsicht.pas"/>
@@ -283,6 +270,18 @@
       <Position>
         <Filename Value="tlfilter.pas"/>
         <Caret Line="1374" Column="57" TopLine="1279"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="16" Column="25"/>
+      </Position>
+      <Position>
+        <Filename Value="neurolab.lpr"/>
+        <Caret Line="82" Column="5" TopLine="189"/>
+      </Position>
+      <Position>
+        <Filename Value="neurolab.lpr"/>
+        <Caret Line="140" Column="45" TopLine="123"/>
       </Position>
     </JumpHistory>
     <RunParams>
