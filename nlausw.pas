@@ -1,7 +1,7 @@
 { Borland-Pascal 7.0 / FPC 3.2.2 }
 {$ifdef fpc} {$mode TP} {$endif}
 
-unit nlausw;
+UNIT nlausw;
 
 {$IFDEF MSDOS}
 {$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X-}
@@ -9,871 +9,1017 @@ unit nlausw;
 {$A+,B-,E+,F-,G+,I-,N+,P+,T+,V+,X-}
 {$ENDIF}
 
-interface
+INTERFACE
 
-uses  crt,       graph,   daff,wavpcm,tulab42,  nlrahmen,
-      dos,      grafik,   tlfilter,      nltrigg,
-      bequem,   plotter,  tlfiles,
-                nlgrafik;
+USES  crt, graph, daff, wavpcm, tulab42, nlrahmen,
+  dos, grafik, tlfilter, nltrigg,
+  bequem, plotter, tlfiles,
+  nlgrafik;
 
-type  statistik=object
-         n:grossint;
-         sx,ssqrx:extended;
-         mx,rox:extended;
-         constructor init;
-         procedure dazu(x:extended);
-         procedure rechnen;
-         end;
+TYPE
+  statistik = OBJECT
+    n :         bigint64;
+    sx, ssqrx : EXTENDED;
+    mx, rox :   EXTENDED;
+    CONSTRUCTOR init;
+    PROCEDURE dazu(x : EXTENDED);
+    PROCEDURE rechnen;
+  END;
 
-      phasenstatistik=object
-         n:grossint;
-         sx,sy:extended;
-         mph,lvek:extended;
-         constructor init;
-         procedure dazu (ph:extended);
-         procedure rechnen;
-         end;
+  phasenstatistik = OBJECT
+    n :         bigint64;
+    sx, sy :    EXTENDED;
+    mph, lvek : EXTENDED;
+    CONSTRUCTOR init;
+    PROCEDURE dazu(ph : EXTENDED);
+    PROCEDURE rechnen;
+  END;
 
-      ampnormalhistogramm=object (grafikamplitude)
-         tstat:statistik;
-         gesamt:grossint;
-         procedure berechnen; virtual;
-         procedure bild; virtual;
-         procedure plot (gr:byte); virtual;
-         constructor aufbauen (xk:byte; rtl:char; dfn:word; ybe:extended; mins,maxs:sample);
-         end;
+  ampnormalhistogramm = OBJECT(grafikamplitude)
+    tstat :  statistik;
+    gesamt : bigint64;
+    PROCEDURE berechnen; VIRTUAL;
+    PROCEDURE image; VIRTUAL;
+    PROCEDURE plot(gr : BYTE); VIRTUAL;
+    CONSTRUCTOR construct(xk : BYTE; rtl : CHAR; dfn : WORD; ybe : EXTENDED; mins, maxs : sample);
+  END;
 
-      grafikaverage=object (grafikmittel)
-         hoehe:array[1..maxkanal+1] of sample;
-         maxi:array[1..maxkanal+1] of wert;
-         maxix:array[1..maxkanal+1] of grossint;
-         flaeche:array[1..maxkanal+1] of wert;
-         procedure berechnen; virtual;
-         procedure bild; virtual;
-         procedure plot (gr:byte); virtual;
-         constructor aufbauen(var kan:kanalmenge; anf,dau:messwert;
-                              trl:char; trp:grossint);
-         end;
+  grafikaverage = OBJECT(grafikmittel)
+    hoehe :   ARRAY[1..maxchannelsandfilters + 1] OF sample;
+    maxi :    ARRAY[1..maxchannelsandfilters + 1] OF typedouble;
+    maxix :   ARRAY[1..maxchannelsandfilters + 1] OF bigint64;
+    flaeche : ARRAY[1..maxchannelsandfilters + 1] OF typedouble;
+    PROCEDURE berechnen; VIRTUAL;
+    PROCEDURE image; VIRTUAL;
+    PROCEDURE plot(gr : BYTE); VIRTUAL;
+    CONSTRUCTOR construct(VAR kan : kanalmenge; anf, dau : typeextended; trl : CHAR;
+      trp : bigint64);
+  END;
 
-      grafikphasenaverage=object (grafikmittel)
-         triggweis:triggerweiser;
-         hoehe:array[1..maxkanal+1] of sample;
-         maxi:array[1..maxkanal+1] of wert;
-         maxix:array[1..maxkanal+1] of grossint;
-         flaeche:array[1..maxkanal+1] of wert;
-         procedure berechnen; virtual;
-         procedure bild; virtual;
-         procedure plot (gr:byte); virtual;
-         constructor aufbauen(var kan:kanalmenge; anf,dau:messwert;
-                              trl:char; trp:grossint; var weis:triggerweiser);
-         end;
+  grafikphasenaverage = OBJECT(grafikmittel)
+    triggweis : triggerweiser;
+    hoehe :     ARRAY[1..maxchannelsandfilters + 1] OF sample;
+    maxi :      ARRAY[1..maxchannelsandfilters + 1] OF typedouble;
+    maxix :     ARRAY[1..maxchannelsandfilters + 1] OF bigint64;
+    flaeche :   ARRAY[1..maxchannelsandfilters + 1] OF typedouble;
+    PROCEDURE berechnen; VIRTUAL;
+    PROCEDURE image; VIRTUAL;
+    PROCEDURE plot(gr : BYTE); VIRTUAL;
+    CONSTRUCTOR construct(VAR kan : kanalmenge; anf, dau : typeextended; trl : CHAR;
+      trp : bigint64; VAR weis : triggerweiser);
+  END;
 
-      intervallhistogramm=object (grafikintervall)
-         gesamt:grossint;
-         tstat:statistik;
-         procedure berechnen; virtual;
-         procedure bild; virtual;
-         procedure plot (gr:byte); virtual;
-         constructor aufbauen(rtl:char; anf,sch:messwert;
-                              din:word; ybe:extended);
-         end;
+  intervallhistogramm = OBJECT(grafikintervall)
+    gesamt : bigint64;
+    tstat :  statistik;
+    PROCEDURE berechnen; VIRTUAL;
+    PROCEDURE image; VIRTUAL;
+    PROCEDURE plot(gr : BYTE); VIRTUAL;
+    CONSTRUCTOR construct(rtl : CHAR; anf, sch : typeextended; din : WORD; ybe : EXTENDED);
+  END;
 
-      autokorrelogramm=object (grafikintervall)
-         gesamt:grossint;
-         tstat:statistik;
-         procedure berechnen; virtual;
-         procedure bild; virtual;
-         procedure plot (gr:byte); virtual;
-         constructor aufbauen(rtl:char; anf,sch:messwert;
-                              din:word; ybe:extended);
-         end;
+  autokorrelogramm = OBJECT(grafikintervall)
+    gesamt : bigint64;
+    tstat :  statistik;
+    PROCEDURE berechnen; VIRTUAL;
+    PROCEDURE image; VIRTUAL;
+    PROCEDURE plot(gr : BYTE); VIRTUAL;
+    CONSTRUCTOR construct(rtl : CHAR; anf, sch : typeextended; din : WORD; ybe : EXTENDED);
+  END;
 
-      kreuzkorrelogramm=object (grafikintervall)
-         obj:char;
-         refn,objn:grossint;
-         nstat,tstat:statistik;
-         procedure berechnen; virtual;
-         procedure bild; virtual;
-         procedure plot (gr:byte); virtual;
-         constructor aufbauen(rtl,otl:char; anf,sch:messwert;
-                              din:word; ybe:extended);
-         end;
+  kreuzkorrelogramm = OBJECT(grafikintervall)
+    obj :          CHAR;
+    refn, objn :   bigint64;
+    nstat, tstat : statistik;
+    PROCEDURE berechnen; VIRTUAL;
+    PROCEDURE image; VIRTUAL;
+    PROCEDURE plot(gr : BYTE); VIRTUAL;
+    CONSTRUCTOR construct(rtl, otl : CHAR; anf, sch : typeextended; din : WORD; ybe : EXTENDED);
+  END;
 
-      psthistogramm=object (grafikintervall)
-         obj:char;
-         anfph,endph:shortint;
-         refn,objn:grossint;
-         nstat,tstat:statistik;
-         procedure berechnen; virtual;
-         procedure bild; virtual;
-         procedure plot (gr:byte); virtual;
-         constructor aufbauen(rtl,otl:char; aph,eph:shortint;
-                              anf,sch:messwert; din:word; ybe:extended);
-         end;
+  psthistogramm = OBJECT(grafikintervall)
+    obj :          CHAR;
+    anfph, endph : SHORTINT;
+    refn, objn :   bigint64;
+    nstat, tstat : statistik;
+    PROCEDURE berechnen; VIRTUAL;
+    PROCEDURE image; VIRTUAL;
+    PROCEDURE plot(gr : BYTE); VIRTUAL;
+    CONSTRUCTOR construct(rtl, otl : CHAR; aph, eph : SHORTINT; anf, sch : typeextended;
+      din : WORD; ybe : EXTENDED);
+  END;
 
-      latenzhistogramm=object (grafikintervall)
-         obj:char;
-         refn:grossint;
-         tstat:statistik;
-         procedure berechnen; virtual;
-         procedure bild; virtual;
-         procedure plot (gr:byte); virtual;
-         constructor aufbauen(rtl,otl:char; anf,sch:messwert;
-                              din:word; ybe:extended);
-         end;
+  latenzhistogramm = OBJECT(grafikintervall)
+    obj :   CHAR;
+    refn :  bigint64;
+    tstat : statistik;
+    PROCEDURE berechnen; VIRTUAL;
+    PROCEDURE image; VIRTUAL;
+    PROCEDURE plot(gr : BYTE); VIRTUAL;
+    CONSTRUCTOR construct(rtl, otl : CHAR; anf, sch : typeextended; din : WORD; ybe : EXTENDED);
+  END;
 
-      phasenhistogramm=object (grafikphasenintervall)
-         obj:char;
-         refn,objn:grossint;
-         weis:triggerweiser;
-         nstat:statistik;
-         phstat:phasenstatistik;
-         procedure berechnen; virtual;
-         procedure bild; virtual;
-         procedure plot (gr:byte); virtual;
-         constructor aufbauen(rtl,otl:char; minabst,maxabst:messwert;
-                              anfph,schph:extended; din:word; ybe:extended);
-         end;
+  phasenhistogramm = OBJECT(grafikphasenintervall)
+    obj :        CHAR;
+    refn, objn : bigint64;
+    weis :       triggerweiser;
+    nstat :      statistik;
+    phstat :     phasenstatistik;
+    PROCEDURE berechnen; VIRTUAL;
+    PROCEDURE image; VIRTUAL;
+    PROCEDURE plot(gr : BYTE); VIRTUAL;
+    CONSTRUCTOR construct(rtl, otl : CHAR; minabst, maxabst : typeextended;
+      anfph, schph : EXTENDED; din : WORD; ybe : EXTENDED);
+  END;
 
-function phasentest(tph,anfph,dauph:extended):boolean;
+FUNCTION phasentest(tph, anfph, dauph : EXTENDED) : BOOLEAN;
 
-implementation
+IMPLEMENTATION
 
-function phasentest(tph,anfph,dauph:extended):boolean;
-begin
-phasentest:=((tph>=anfph) and (tph<=anfph+dauph)) or
-            ((tph+1>=anfph) and (tph+1<=anfph+dauph));
-end;
+FUNCTION phasentest(tph, anfph, dauph : EXTENDED) : BOOLEAN;
+BEGIN
+  phasentest := ((tph >= anfph) AND (tph <= anfph + dauph)) OR ((tph + 1 >= anfph) AND (tph + 1 <= anfph + dauph));
+END;
 
 { statistik }
 
-constructor statistik.init;
-begin
-n:=0;
-sx:=0; ssqrx:=0;
-end;
+CONSTRUCTOR statistik.init;
+BEGIN
+  n     := 0;
+  sx    := 0;
+  ssqrx := 0;
+END;
 
-procedure statistik.dazu (x:extended);
-begin
-inc(n);
-sx:=sx+x; ssqrx:=ssqrx+sqr(x);
-end;
+PROCEDURE statistik.dazu(x : EXTENDED);
+BEGIN
+  Inc(n);
+  sx    := sx + x;
+  ssqrx := ssqrx + sqr(x);
+END;
 
-procedure statistik.rechnen;
-var   arg:extended;
-begin
-if n>1 then begin
-   mx:=sx/n;
-   arg:=(ssqrx-sqr(sx)/n)/(n-1);
-   if arg<=0 then rox:=0
-             else rox:=sqrt(arg);
-   end else begin
-   if n>0 then mx:=sx/n else mx:=0;
-   rox:=0;
-   end
-end;
+PROCEDURE statistik.rechnen;
+VAR
+  arg : EXTENDED;
+BEGIN
+  IF n > 1 THEN
+  BEGIN
+    mx  := sx / n;
+    arg := (ssqrx - sqr(sx) / n) / (n - 1);
+    IF arg <= 0 THEN rox := 0
+    ELSE
+      rox                := sqrt(arg);
+  END
+  ELSE
+  BEGIN
+    IF n > 0 THEN mx := sx / n
+    ELSE
+      mx             := 0;
+    rox := 0;
+  END;
+END;
 
 { phasenstatistik }
 
-constructor phasenstatistik.init;
-begin
-n:=0;
-sx:=0; sy:=0;
-end;
+CONSTRUCTOR phasenstatistik.init;
+BEGIN
+  n  := 0;
+  sx := 0;
+  sy := 0;
+END;
 
-procedure phasenstatistik.dazu (ph:extended);
-begin
-inc(n);
-sx:=sx+cos(ph); sy:=sy+sin(ph);
-end;
+PROCEDURE phasenstatistik.dazu(ph : EXTENDED);
+BEGIN
+  Inc(n);
+  sx := sx + cos(ph);
+  sy := sy + sin(ph);
+END;
 
-procedure phasenstatistik.rechnen;
-begin
-if n=0 then begin mph:=0; lvek:=0 end
-       else begin
-   mph:=arctan(sy/sx);
-   if sx<0 then mph:=mph+pi;
-   if mph<0 then mph:=mph+2*pi;
-   lvek:=sqrt(sqr(sx/n)+sqr(sy/n));
-   end;
-end;
+PROCEDURE phasenstatistik.rechnen;
+BEGIN
+  IF n = 0 THEN
+  BEGIN
+    mph  := 0;
+    lvek := 0;
+  END
+  ELSE
+  BEGIN
+    mph := arctan(sy / sx);
+    IF sx < 0 THEN mph := mph + pi;
+    IF mph < 0 THEN mph := mph + 2 * pi;
+    lvek                := sqrt(sqr(sx / n) + sqr(sy / n));
+  END;
+END;
 
 
-procedure rauschen (var feld:mittelfeld; dauer:messwert; var hoehe:sample);
-const breite=16;
-      faktor=maxsample/5000;
-var   verteilung:array[-5000..5000] of grossint;
-      i,j,wol,wor,gesamt,bisher,jetzt:longint;
-begin
-fillchar(verteilung,sizeof(verteilung),0);
-gesamt:=trunc(dauer);
-for i:=0 to gesamt do
-  if (feld[i]<=maxsample) and (feld[i]>=minsample) then
-     inc(verteilung[round(feld[i]/faktor)]);
-bisher:=0;
-for i:=-5000 to 5000 do begin
-   jetzt:=0;
-   for j:=max(-5000,i-breite) to min(5000,i+breite) do inc(jetzt,verteilung[j]);
-   if jetzt>=bisher then begin
-      if jetzt>bisher then begin wol:=i; bisher:=jetzt end;
-      wor:=i; end;
-   end;
-hoehe:=round((wol+wor)/2*faktor);
-end;
+PROCEDURE rauschen(VAR feld : databuffer; dauer : typeextended; VAR hoehe : sample);
+CONST
+  breite = 16;
+  faktor = maxsample / 5000;
+VAR
+  verteilung : ARRAY[-5000..5000] OF bigint64;
+  i, j, wol, wor, gesamt, bisher, jetzt : LONGINT;
+BEGIN
+  fillchar(verteilung, sizeof(verteilung), 0);
+  gesamt := trunc(dauer);
+  FOR i := 0 TO gesamt DO
+    IF (feld[i] <= maxsample) AND (feld[i] >= minsample) THEN
+      Inc(verteilung[round(feld[i] / faktor)]);
+  bisher := 0;
+  FOR i := -5000 TO 5000 DO
+  BEGIN
+    jetzt := 0;
+    FOR j := max(-5000, i - breite) TO min(5000, i + breite) DO Inc(jetzt, verteilung[j]);
+    IF jetzt >= bisher THEN
+    BEGIN
+      IF jetzt > bisher THEN
+      BEGIN
+        wol    := i;
+        bisher := jetzt;
+      END;
+      wor := i;
+    END;
+  END;
+  hoehe := round((wol + wor) / 2 * faktor);
+END;
 
 { ampnormalhistogramm }
 
-procedure ampnormalhistogramm.berechnen;
-var   um:extended;
-      tpr:exword;
-      ywert:extended;
-      nr:byte;
-begin
-gesamt:=tliste[ref]^.triggsum;
-if gesamt=0 then begin
-   write('No trigger point'); pieps; warte;
-   abbruch:=true; exit end;
-fillchar(diff^,sizeof(bildfeld),0);
-tstat.init;
-um:=1/gesamt;
-for nr:=1 to filenr do with tliste[ref]^.fil[nr] do begin
-   oeffnen(nr);
-   for tpr:=1 to automn do begin
-      ywert:=dat(zwi(autom^[tpr]),xkanal);
-      if (kon(ywert,xkanal)<maxsamp+klasse) and (kon(ywert,xkanal)>minsamp-klasse) then begin
-         tstat.dazu(ywert);
-         incex(diff^[trunc((kon(ywert,xkanal)-minsamp)/klasse)+1],um);
-         end;
-      end;
-   schliesse;
-   end;
-tstat.rechnen;
-end;
+PROCEDURE ampnormalhistogramm.berechnen;
+VAR
+  um :    EXTENDED;
+  tpr :   midint32;
+  ywert : EXTENDED;
+  nr :    BYTE;
+BEGIN
+  gesamt := tliste[ref]^.triggsum;
+  IF gesamt = 0 THEN
+  BEGIN
+    Write('No trigger point');
+    pieps;
+    warte;
+    abortion := True;
+    exit;
+  END;
+  fillchar(diff^, sizeof(imagesbuffer), 0);
+  tstat.init;
+  um := 1 / gesamt;
+  FOR nr := 1 TO filenr DO WITH tliste[ref]^.fil[nr] DO
+    BEGIN
+      oeffnen(nr);
+      FOR tpr := 1 TO automn DO
+      BEGIN
+        ywert := dat(zwi(autom^[tpr]), xkanal);
+        IF (kon(ywert, xkanal) < maxsamp + klasse) AND (kon(ywert, xkanal) > minsamp - klasse) THEN
+        BEGIN
+          tstat.dazu(ywert);
+          incex(diff^[trunc((kon(ywert, xkanal) - minsamp) / klasse) + 1], um);
+        END;
+      END;
+      schliesse;
+    END;
+  tstat.rechnen;
+END;
 
-procedure ampnormalhistogramm.bild;
-var   rand:word;
-      einheit:einheitstring;
-begin
-inherited bild;
-rand:=getmaxx div 2;
-einheit:=belegungsliste[xkanal].einhwort;
-setcolor(getmaxcolor); settextjustify(lefttext,centertext);
-outtextxy(rand,4, 'Trigger Points: '+wort(gesamt));
-outtextxy(rand,14,'Evaluated     : '+wort(tstat.n));
-outtextxy(rand,24,'Mean Amplitude: ('
-                 +extwort(extspannung(tstat.mx,xkanal),1,1)+'ñ'
-                 +extwort(extspannung(tstat.rox,xkanal),1,1)+') '+einheit);
-outtextxy(0,4,'"AMPLITUDE HISTOGRAM"');
-end;
+PROCEDURE ampnormalhistogramm.image;
+VAR
+  rand :    WORD;
+  einheit : einheitstring;
+BEGIN
+  INHERITED image;
+  rand    := getmaxx DIV 2;
+  einheit := belegungsliste[xkanal].einhwort;
+  setcolor(getmaxcolor);
+  settextjustify(lefttext, centertext);
+  outtextxy(rand, 4, 'Trigger Points: ' + wort(gesamt));
+  outtextxy(rand, 14, 'Evaluated     : ' + wort(tstat.n));
+  outtextxy(rand, 24, 'Mean Amplitude: (' + extwort(extspannung(tstat.mx, xkanal), 1, 1) +
+    'ñ' + extwort(extspannung(tstat.rox, xkanal), 1, 1) + ') ' + einheit);
+  outtextxy(0, 4, '"AMPLITUDE HISTOGRAM"');
+END;
 
-procedure ampnormalhistogramm.plot (gr:byte);
-begin
-inherited plot(gr);
-write(plt,kleinschr,plpa(diffn,0),'DI0,1;CP0,-2;');
-write(plt,pllb('AMPLITUDE HISTOGRAM'),'CP;CP;');
-write(plt,pllb(' Trigger Points: '+wort(gesamt)),'CP;');
-write(plt,pllb(' Evaluated     : '+wort(tstat.n)),'CP;');
-write(plt,pllb(' Mean Amplitude: ('+extwort(extspannung(tstat.mx,xkanal),1,1)
-              +' +/- '+extwort(extspannung(tstat.rox,xkanal),1,1)
-              +') '),belegungsliste[xkanal].plot,'CP;');
-end;
+PROCEDURE ampnormalhistogramm.plot(gr : BYTE);
+BEGIN
+  INHERITED plot(gr);
+  Write(plt, kleinschr, plpa(diffn, 0), 'DI0,1;CP0,-2;');
+  Write(plt, pllb('AMPLITUDE HISTOGRAM'), 'CP;CP;');
+  Write(plt, pllb(' Trigger Points: ' + wort(gesamt)), 'CP;');
+  Write(plt, pllb(' Evaluated     : ' + wort(tstat.n)), 'CP;');
+  Write(plt, pllb(' Mean Amplitude: (' + extwort(extspannung(tstat.mx, xkanal), 1, 1) +
+    ' +/- ' + extwort(extspannung(tstat.rox, xkanal), 1, 1) + ') '), belegungsliste[xkanal].plot, 'CP;');
+END;
 
-constructor ampnormalhistogramm.aufbauen (xk:byte; rtl:char; dfn:word;
-                                          ybe:extended; mins,maxs:sample);
-begin
-grafikamplitude.aufbauen (xk,rtl,dfn,ybe,mins,maxs);
-end;
+CONSTRUCTOR ampnormalhistogramm.construct(xk : BYTE; rtl : CHAR; dfn : WORD;
+  ybe : EXTENDED; mins, maxs : sample);
+BEGIN
+  grafikamplitude.construct(xk, rtl, dfn, ybe, mins, maxs);
+END;
 
 {grafikaverage}
 
-procedure grafikaverage.berechnen;
-var   i,j,tp,tptot:longint;
-      flaech:extended;
-      nr:byte;
-begin
-tptot:=0;
-for nr:=1 to filenr do with tliste[tl]^.fil[nr] do
-  if automda then begin
-   write(#13); clreol;
-   write('Averaging: ',liste[nr].name,', total trigger point no.:');
-   oeffnen(nr);
-   for tp:=1 to automn do begin
-      for j:=0 to maxkanal do if j in kanaele.dabei then for i:=0 to rdauer do
-         mittel[j]^[i]:=mittel[j]^[i]+dat(zwi(autom^[tp]+anfang+i),j);
-      inc(tptot); if (tptot mod 128) = 0 then write(tptot:9,#8#8#8#8#8#8#8#8#8);
-      if keypressed and (readkey=#27) then begin abbruch:=true; exit end;
-      end;
-   schliesse;
-   end;
-for j:=0 to maxkanal do if j in kanaele.dabei then
-   for i:=0 to rdauer do mittel[j]^[i]:=mittel[j]^[i]/tpgesamt;
-with kanaele do for j:=1 to kn do begin
-   rauschen(mittel[k[j]]^,dauer,hoehe[j]);
-   maxix[j]:=0; maxi[j]:=0;
-   for i:=0 to trunc(dauer) do if maxi[j]<mittel[k[j]]^[i] then begin
-      maxi[j]:=mittel[k[j]]^[i]; maxix[j]:=i end;
-   flaech:=0;
-   for i:=0 to rdauer do flaech:=flaech+mittel[k[j]]^[i];
-   flaeche[j]:=(flaech/(rdauer+1)-hoehe[j])*zeit(rdauer+1)/1000;
-   end;
-end;
+PROCEDURE grafikaverage.berechnen;
+VAR
+  i, j, tp, tptot : LONGINT;
+  flaech :          EXTENDED;
+  nr :              BYTE;
+BEGIN
+  tptot := 0;
+  FOR nr := 1 TO filenr DO WITH tliste[tl]^.fil[nr] DO
+      IF automda THEN
+      BEGIN
+        Write(#13);
+        clreol;
+        Write('Averaging: ', liste[nr].Name, ', total trigger point no.:');
+        oeffnen(nr);
+        FOR tp := 1 TO automn DO
+        BEGIN
+          FOR j := 0 TO maxchannelsandfilters DO IF j IN kanaele.dabei THEN FOR i := 0 TO rdauer DO
+                mittel[j]^[i] := mittel[j]^[i] + dat(zwi(autom^[tp] + anfang + i), j);
+          Inc(tptot);
+          IF (tptot MOD 128) = 0 THEN Write(tptot : 9, #8#8#8#8#8#8#8#8#8);
+          IF keypressed AND (readkey = #27) THEN
+          BEGIN
+            abortion := True;
+            exit;
+          END;
+        END;
+        schliesse;
+      END;
+  FOR j := 0 TO maxchannelsandfilters DO IF j IN kanaele.dabei THEN
+      FOR i := 0 TO rdauer DO mittel[j]^[i] := mittel[j]^[i] / tpgesamt;
+  WITH kanaele DO FOR j := 1 TO kn DO
+    BEGIN
+      rauschen(mittel[k[j]]^, dauer, hoehe[j]);
+      maxix[j] := 0;
+      maxi[j]  := 0;
+      FOR i := 0 TO trunc(dauer) DO IF maxi[j] < mittel[k[j]]^[i] THEN
+        BEGIN
+          maxi[j]  := mittel[k[j]]^[i];
+          maxix[j] := i;
+        END;
+      flaech := 0;
+      FOR i := 0 TO rdauer DO flaech := flaech + mittel[k[j]]^[i];
+      flaeche[j] := (flaech / (rdauer + 1) - hoehe[j]) * zeit(rdauer + 1) / 1000;
+    END;
+END;
 
-procedure grafikaverage.bild;
-var   x,y,j:longint;
-      fleinheit:einheittyp;
+PROCEDURE grafikaverage.image;
+VAR
+  x, y, j :   LONGINT;
+  fleinheit : einheittyp;
+BEGIN
+  WITH kanaele DO
+  BEGIN
+    grafikmittel.image;
+    setlinestyle(dottedln, 0, normwidth);
+    settextjustify(righttext, toptext);
+    FOR j := 1 TO kn DO
+    BEGIN
+      outtextxy(getmaxx, y0[j] - breite + 1, 'Base=' + extwort(extspannung(hoehe[j], k[j]), 1, 2) +
+        ' ' + belegungsliste[k[j]].einhwort);
+      y := y0[j] + round(kon(hoehe[j], k[j]) * faktor);
+      line(lrand + 1, y, getmaxx, y);
+      y := y0[j] + round(kon(maxi[j], k[j]) * faktor);
+      x := round(maxix[j] / stauchung) + lrand + 1;
+      outtextxy(getmaxx, y0[j] - breite + 9, 'Maximum=' + extwort(
+        (maxi[j] - hoehe[j]) * belegungsliste[k[j]].faktor, 1, 2) + ' ' + belegungsliste[k[j]].einhwort);
+      line(max(lrand + 1, x - 20), y, min(getmaxx, x + 20), y);
+      fleinheit := belegungsliste[k[j]];
+      Inc(fleinheit.sekunde);
+      outtextxy(getmaxx, y0[j] - breite + 17, 'Area=' + extwort(flaeche[j] * belegungsliste[k[j]].faktor, 1, 3) +
+        ' ' + fleinheit.einhwort);
+    END;
+    setlinestyle(solidln, 0, normwidth);
+  END;
+  settextjustify(lefttext, centertext);
+  outtextxy(0, 4, '"AVERAGE"');
+END;
 
-begin
-with kanaele do begin
-   grafikmittel.bild;
-   setlinestyle(dottedln,0,normwidth);
-   settextjustify(righttext,toptext);
-   for j:=1 to kn do begin
-      outtextxy(getmaxx,y0[j]-breite+1,'Base='
-         +extwort(extspannung(hoehe[j],k[j]),1,2)+' '
-         +belegungsliste[k[j]].einhwort);
-      y:=y0[j]+round(kon(hoehe[j],k[j])*faktor);
-      line(lrand+1,y,getmaxx,y);
-      y:=y0[j]+round(kon(maxi[j],k[j])*faktor);
-      x:=round(maxix[j]/stauchung)+lrand+1;
-      outtextxy(getmaxx,y0[j]-breite+9,'Maximum='
-         +extwort((maxi[j]-hoehe[j])*belegungsliste[k[j]].faktor,1,2)
-         +' '+belegungsliste[k[j]].einhwort);
-      line(max(lrand+1,x-20),y,min(getmaxx,x+20),y);
-      fleinheit:=belegungsliste[k[j]]; inc(fleinheit.sekunde);
-      outtextxy(getmaxx,y0[j]-breite+17,'Area='
-         +extwort(flaeche[j]*belegungsliste[k[j]].faktor,1,3)+' '
-         +fleinheit.einhwort);
-      end;
-   setlinestyle(solidln,0,normwidth);
-   end;
-settextjustify(lefttext,centertext);
-outtextxy(0,4,'"AVERAGE"');
-end;
+PROCEDURE grafikaverage.plot(gr : BYTE);
+VAR
+  i :         LONGINT;
+  fleinheit : einheittyp;
+BEGIN
+  grafikmittel.plot(gr);
+  IF abortion THEN exit;
+  WITH kanaele DO
+  BEGIN
+    Write(plt, kleinschr, 'DI0,1;', plpa(rdauer, 0), 'CP-2,-2;',
+      pllb('AVERAGE'), 'CP-7,-1;',
+      pllb('b'), 'CP-1,-1;', pllb('m'), 'CP-1,-1;', pllb('a'));
+    FOR i := kn DOWNTO 1 DO
+    BEGIN
+      fleinheit := belegungsliste[k[i]];
+      Inc(fleinheit.sekunde);
+      Write(plt, plpa(rdauer, fullsamplerange * (kn - i)), 'CP0,-3;',
+        pllb(extwort(extspannung(hoehe[i], k[i]), 1, 2) + ' '),
+        belegungsliste[k[i]].plot, 'CP;',
+        pllb(extwort((maxi[i] - hoehe[i]) * belegungsliste[k[i]].faktor, 1, 2) + ' '),
+        belegungsliste[k[i]].plot, 'CP;',
+        pllb(extwort(flaeche[i] * belegungsliste[k[i]].faktor, 1, 3) + ' '),
+        fleinheit.plot);
+    END;
+  END;
+END;
 
-procedure grafikaverage.plot (gr:byte);
-var   i:longint;
-      fleinheit:einheittyp;
+CONSTRUCTOR grafikaverage.construct(VAR kan : kanalmenge; anf, dau : typeextended; trl : CHAR;
+  trp : bigint64);
+BEGIN
+  grafikmittel.construct(kan, anf, dau, trl, trp);
+END;
 
-begin
-grafikmittel.plot(gr);
-if abbruch then exit;
-with kanaele do begin
-   write(plt,kleinschr,'DI0,1;',plpa(rdauer,0),'CP-2,-2;',
-             pllb('AVERAGE'),'CP-7,-1;',
-             pllb('b'),'CP-1,-1;',pllb('m'),'CP-1,-1;',pllb('a'));
-   for i:=kn downto 1 do begin
-      fleinheit:=belegungsliste[k[i]]; inc(fleinheit.sekunde);
-      write(plt,plpa(rdauer,ganz*(kn-i)),'CP0,-3;',
-                pllb(extwort(extspannung(hoehe[i],k[i]),1,2)+' '),
-                belegungsliste[k[i]].plot,'CP;',
-                pllb(extwort((maxi[i]-hoehe[i])*belegungsliste[k[i]].faktor,1,2)+' '),
-                belegungsliste[k[i]].plot,'CP;',
-                pllb(extwort(flaeche[i]*belegungsliste[k[i]].faktor,1,3)+' '),
-                fleinheit.plot);
-      end;
-   end;
-end;
+PROCEDURE grafikphasenaverage.berechnen;
+VAR
+  nr :              BYTE;
+  i, j, tp, tptot : LONGINT;
+  abst :            typeextended;
+  dehnfaktor, flaech : EXTENDED;
+BEGIN
+  WITH triggweis, tliste[tl]^ DO
+  BEGIN
+    tptot := 0;
+    FOR nr := 1 TO filenr DO WITH weisliste[nr], fil[nr] DO IF automda THEN
+        BEGIN
+          Write(#13);
+          clreol;
+          Write('Averaging: ', liste[nr].Name, ', total trigger point no.:');
+          oeffnen(nr);
+          FOR tp := 1 TO n DO
+          BEGIN
+            abst       := autom^[t^[tp] + 1] - autom^[t^[tp]];
+            dehnfaktor := mittelabstand / abst;
+            FOR j := 0 TO maxchannelsandfilters DO IF j IN kanaele.dabei THEN
+                FOR i := 0 TO rdauer DO
+                  mittel[j]^[i] := mittel[j]^[i] + dat(zwi(autom^[t^[tp]] + (anfang + i) / dehnfaktor), j);
+            Inc(tptot);
+            IF (tptot MOD 128) = 0 THEN Write(tptot : 9, #8#8#8#8#8#8#8#8#8);
+            IF keypressed AND (readkey = #27) THEN
+            BEGIN
+              abortion := True;
+              exit;
+            END;
+          END;
+          schliesse;
+        END;
+    FOR j := 0 TO maxchannelsandfilters DO IF j IN kanaele.dabei THEN
+        FOR i := 0 TO rdauer DO mittel[j]^[i] := mittel[j]^[i] / gesamt;
+  END;
+  WITH kanaele DO FOR j := 1 TO kn DO
+    BEGIN
+      rauschen(mittel[k[j]]^, dauer, hoehe[j]);
+      maxix[j] := 0;
+      maxi[j]  := 0;
+      FOR i := 0 TO trunc(dauer) DO IF maxi[j] < mittel[k[j]]^[i] THEN
+        BEGIN
+          maxi[j]  := mittel[k[j]]^[i];
+          maxix[j] := i;
+        END;
+      flaech := 0;
+      FOR i := 0 TO rdauer DO flaech := flaech + mittel[k[j]]^[i];
+      flaeche[j] := (flaech / (rdauer + 1) - hoehe[j]) * zeit(rdauer + 1) / 1000;
+    END;
+END;
 
-constructor grafikaverage.aufbauen(var kan:kanalmenge;anf,dau:messwert;
-                                   trl:char; trp:grossint);
-begin
-grafikmittel.aufbauen(kan,anf,dau,trl,trp);
-end;
+PROCEDURE grafikphasenaverage.image;
+VAR
+  x, y, j :   LONGINT;
+  fleinheit : einheittyp;
+BEGIN
+  WITH kanaele DO
+  BEGIN
+    grafikmittel.image;
+    setlinestyle(dottedln, 0, normwidth);
+    settextjustify(righttext, toptext);
+    FOR j := 1 TO kn DO
+    BEGIN
+      outtextxy(getmaxx, y0[j] - breite + 1, 'Base=' + extwort(extspannung(hoehe[j], k[j]), 1, 2) +
+        ' ' + belegungsliste[k[j]].einhwort);
+      y := y0[j] + round(kon(hoehe[j], k[j]) * faktor);
+      line(lrand + 1, y, getmaxx, y);
+      y := y0[j] + round(kon(maxi[j], k[j]) * faktor);
+      x := round(maxix[j] / stauchung) + lrand + 1;
+      outtextxy(getmaxx, y0[j] - breite + 9, 'Maximum=' + extwort(
+        (maxi[j] - hoehe[j]) * belegungsliste[k[j]].faktor, 1, 2) + ' ' + belegungsliste[k[j]].einhwort);
+      line(max(lrand + 1, x - 20), y, min(getmaxx, x + 20), y);
+      fleinheit := belegungsliste[k[j]];
+      Inc(fleinheit.sekunde);
+      outtextxy(getmaxx, y0[j] - breite + 17, 'Area=' + extwort(flaeche[j] * belegungsliste[k[j]].faktor, 1, 3) +
+        ' ' + fleinheit.einhwort);
+    END;
+    setlinestyle(solidln, 0, normwidth);
+  END;
+  settextjustify(lefttext, centertext);
+  outtextxy(0, 4, '"PHASE DEPENDENT AVERAGE"');
+END;
 
-procedure grafikphasenaverage.berechnen;
-var   nr:byte;
-      i,j,tp,tptot:longint;
-      abst:messwert;
-      dehnfaktor,flaech:extended;
-begin
-with triggweis, tliste[tl]^ do begin
-   tptot:=0;
-   for nr:=1 to filenr do with weisliste[nr], fil[nr] do if automda then begin
-      write(#13); clreol;
-      write('Averaging: ',liste[nr].name,', total trigger point no.:');
-      oeffnen(nr);
-      for tp:=1 to n do begin
-         abst:=autom^[t^[tp]+1]-autom^[t^[tp]];
-         dehnfaktor:=mittelabstand/abst;
-         for j:=0 to maxkanal do if j in kanaele.dabei then
-          for i:=0 to rdauer do
-           mittel[j]^[i]:=mittel[j]^[i]+dat(zwi(autom^[t^[tp]]+(anfang+i)/dehnfaktor),j);
-         inc(tptot); if (tptot mod 128) = 0 then write(tptot:9,#8#8#8#8#8#8#8#8#8);
-         if keypressed and (readkey=#27) then begin abbruch:=true; exit end;
-         end;
-      schliesse;
-      end;
-   for j:=0 to maxkanal do if j in kanaele.dabei then
-      for i:=0 to rdauer do mittel[j]^[i]:=mittel[j]^[i]/gesamt;
-   end;
-with kanaele do for j:=1 to kn do begin
-   rauschen(mittel[k[j]]^,dauer,hoehe[j]);
-   maxix[j]:=0; maxi[j]:=0;
-   for i:=0 to trunc(dauer) do if maxi[j]<mittel[k[j]]^[i] then begin
-      maxi[j]:=mittel[k[j]]^[i]; maxix[j]:=i end;
-   flaech:=0;
-   for i:=0 to rdauer do flaech:=flaech+mittel[k[j]]^[i];
-   flaeche[j]:=(flaech/(rdauer+1)-hoehe[j])*zeit(rdauer+1)/1000;
-   end;
-end;
+PROCEDURE grafikphasenaverage.plot(gr : BYTE);
+VAR
+  i :         LONGINT;
+  fleinheit : einheittyp;
+BEGIN
+  grafikmittel.plot(gr);
+  IF abortion THEN exit;
+  WITH kanaele DO
+  BEGIN
+    Write(plt, kleinschr, 'DI0,1;', plpa(rdauer, 0), 'CP-2,-2;',
+      pllb('PHASE DEPENDENT AVERAGE'), 'CP-23,-1;',
+      pllb('b'), 'CP-1,-1;', pllb('m'), 'CP-1,-1;', pllb('a'));
+    FOR i := kn DOWNTO 1 DO
+    BEGIN
+      fleinheit := belegungsliste[k[i]];
+      Inc(fleinheit.sekunde);
+      Write(plt, plpa(rdauer, fullsamplerange * (kn - i)), 'CP0,-3;',
+        pllb(extwort(extspannung(hoehe[i], k[i]), 1, 2) + ' '),
+        belegungsliste[k[i]].plot, 'CP;',
+        pllb(extwort((maxi[i] - hoehe[i]) * belegungsliste[k[i]].faktor, 1, 2) + ' '),
+        belegungsliste[k[i]].plot, 'CP;',
+        pllb(extwort(flaeche[i] * belegungsliste[k[i]].faktor, 1, 3) + ' '),
+        fleinheit.plot);
+    END;
+  END;
+END;
 
-procedure grafikphasenaverage.bild;
-var   x,y,j:longint;
-      fleinheit:einheittyp;
+CONSTRUCTOR grafikphasenaverage.construct(VAR kan : kanalmenge; anf, dau : typeextended;
+  trl : CHAR; trp : bigint64; VAR weis : triggerweiser);
+BEGIN
+  triggweis := weis;
+  grafikmittel.construct(kan, anf, dau, trl, trp);
+END;
 
-begin
-with kanaele do begin
-   grafikmittel.bild;
-   setlinestyle(dottedln,0,normwidth);
-   settextjustify(righttext,toptext);
-   for j:=1 to kn do begin
-      outtextxy(getmaxx,y0[j]-breite+1,'Base='
-         +extwort(extspannung(hoehe[j],k[j]),1,2)+' '
-         +belegungsliste[k[j]].einhwort);
-      y:=y0[j]+round(kon(hoehe[j],k[j])*faktor);
-      line(lrand+1,y,getmaxx,y);
-      y:=y0[j]+round(kon(maxi[j],k[j])*faktor);
-      x:=round(maxix[j]/stauchung)+lrand+1;
-      outtextxy(getmaxx,y0[j]-breite+9,'Maximum='
-         +extwort((maxi[j]-hoehe[j])*belegungsliste[k[j]].faktor,1,2)
-         +' '+belegungsliste[k[j]].einhwort);
-      line(max(lrand+1,x-20),y,min(getmaxx,x+20),y);
-      fleinheit:=belegungsliste[k[j]]; inc(fleinheit.sekunde);
-      outtextxy(getmaxx,y0[j]-breite+17,'Area='
-         +extwort(flaeche[j]*belegungsliste[k[j]].faktor,1,3)+' '
-         +fleinheit.einhwort);
-      end;
-   setlinestyle(solidln,0,normwidth);
-   end;
-settextjustify(lefttext,centertext);
-outtextxy(0,4,'"PHASE DEPENDENT AVERAGE"');
-end;
+CONSTRUCTOR intervallhistogramm.construct(rtl : CHAR; anf, sch : typeextended; din : WORD;
+  ybe : EXTENDED);
+BEGIN
+  grafikintervall.construct(rtl, anf, sch, din, ybe);
+END;
 
-procedure grafikphasenaverage.plot (gr:byte);
-var   i:longint;
-      fleinheit:einheittyp;
+PROCEDURE intervallhistogramm.berechnen;
+VAR
+  um :  EXTENDED;
+  tpr : LONGINT;
+  d :   typeextended;
+  nr :  BYTE;
+BEGIN
+  gesamt := tliste[ref]^.triggsum;
+  IF gesamt = 0 THEN
+  BEGIN
+    Write('No trigger point');
+    pieps;
+    warte;
+    abortion := True;
+    exit;
+  END;
+  fillchar(diff^, sizeof(imagesbuffer), 0);
+  tstat.init;
+  um := 1 / gesamt;
+  FOR nr := 1 TO filenr DO WITH tliste[ref]^.fil[nr] DO
+      FOR tpr := 1 TO automn - 1 DO
+      BEGIN
+        d := autom^[tpr + 1] - autom^[tpr];
+        IF (d < schluss) AND (d >= anfang) THEN
+        BEGIN
+          tstat.dazu(d);
+          incex(diff^[trunc((d - anfang) / klasse) + 1], um);
+        END;
+      END;
+  tstat.rechnen;
+END;
 
-begin
-grafikmittel.plot(gr);
-if abbruch then exit;
-with kanaele do begin
-   write(plt,kleinschr,'DI0,1;',plpa(rdauer,0),'CP-2,-2;',
-             pllb('PHASE DEPENDENT AVERAGE'),'CP-23,-1;',
-             pllb('b'),'CP-1,-1;',pllb('m'),'CP-1,-1;',pllb('a'));
-   for i:=kn downto 1 do begin
-      fleinheit:=belegungsliste[k[i]]; inc(fleinheit.sekunde);
-      write(plt,plpa(rdauer,ganz*(kn-i)),'CP0,-3;',
-                pllb(extwort(extspannung(hoehe[i],k[i]),1,2)+' '),
-                belegungsliste[k[i]].plot,'CP;',
-                pllb(extwort((maxi[i]-hoehe[i])*belegungsliste[k[i]].faktor,1,2)+' '),
-                belegungsliste[k[i]].plot,'CP;',
-                pllb(extwort(flaeche[i]*belegungsliste[k[i]].faktor,1,3)+' '),
-                fleinheit.plot);
-      end;
-   end;
-end;
+PROCEDURE intervallhistogramm.image;
+VAR
+  rand : WORD;
+BEGIN
+  grafikintervall.image;
+  rand := getmaxx DIV 2;
+  setcolor(getmaxcolor);
+  settextjustify(lefttext, centertext);
+  outtextxy(rand, 4, 'Trigger Points: ' + wort(gesamt));
+  outtextxy(rand, 14, 'Evaluated     : ' + wort(tstat.n));
+  outtextxy(rand, 24, 'Mean Interval : ' + extwort(extzeit(tstat.mx), 3, 3) + ' ms ñ ' +
+    extwort(extzeit(tstat.rox), 3, 3) + ' ms');
+  outtextxy(0, 4, '"INTERVAL HISTOGRAM"');
+END;
 
-constructor grafikphasenaverage.aufbauen(var kan:kanalmenge;anf,dau:messwert;
-                                         trl:char; trp:grossint; var weis:triggerweiser);
-begin
-triggweis:=weis;
-grafikmittel.aufbauen(kan,anf,dau,trl,trp);
-end;
+PROCEDURE intervallhistogramm.plot(gr : BYTE);
+BEGIN
+  grafikintervall.plot(gr);
+  Write(plt, kleinschr, plpa(diffn, 0), 'DI0,1;CP0,-2;');
+  Write(plt, pllb('INTERVAL HISTOGRAM'), 'CP;CP;');
+  Write(plt, pllb(' Trigger Points: ' + wort(gesamt)), 'CP;');
+  Write(plt, pllb(' Evaluated     : ' + wort(tstat.n)), 'CP;');
+  Write(plt, pllb(' Mean Interval : ' + extwort(extzeit(tstat.mx), 3, 3) + ' ms +/- ' +
+    extwort(extzeit(tstat.rox), 3, 3) + ' ms'));
+END;
 
-constructor intervallhistogramm.aufbauen(rtl:char; anf,sch:messwert;
-                                         din:word; ybe:extended);
-begin
-grafikintervall.aufbauen(rtl,anf,sch,din,ybe);
-end;
+CONSTRUCTOR autokorrelogramm.construct(rtl : CHAR; anf, sch : typeextended; din : WORD;
+  ybe : EXTENDED);
+BEGIN
+  grafikintervall.construct(rtl, anf, sch, din, ybe);
+END;
 
-procedure intervallhistogramm.berechnen;
-var   um:extended;
-      tpr:longint;
-      d:messwert;
-      nr:byte;
-begin
-gesamt:=tliste[ref]^.triggsum;
-if gesamt=0 then begin
-   write('No trigger point'); pieps; warte;
-   abbruch:=true; exit end;
-fillchar(diff^,sizeof(bildfeld),0);
-tstat.init;
-um:=1/gesamt;
-for nr:=1 to filenr do with tliste[ref]^.fil[nr] do
-   for tpr:=1 to automn-1 do begin
-      d:=autom^[tpr+1]-autom^[tpr];
-      if (d<schluss) and (d>=anfang) then begin
-         tstat.dazu(d);
-         incex(diff^[trunc((d-anfang)/klasse)+1],um);
-         end;
-      end;
-tstat.rechnen;
-end;
+PROCEDURE autokorrelogramm.berechnen;
+VAR
+  um :              EXTENDED;
+  tpr, tpo :        LONGINT;
+  tpol, tpor, dum : midint32;
+  d :               typeextended;
+  nr :              BYTE;
+BEGIN
+  gesamt := tliste[ref]^.triggsum;
+  IF gesamt = 0 THEN
+  BEGIN
+    Write('No trigger point');
+    pieps;
+    warte;
+    abortion := True;
+    exit;
+  END;
+  fillchar(diff^, sizeof(imagesbuffer), 0);
+  tstat.init;
+  um := 1 / gesamt;
+  WITH tliste[ref]^ DO FOR nr := 1 TO filenr DO WITH fil[nr] DO
+        IF automda THEN
+        BEGIN
+          Write(#13);
+          clreol;
+          Write('Processing: ', liste[nr].Name, ', trigger point no.:');
+          FOR tpr := 1 TO automn DO
+          BEGIN
+            such(0, automn + 1, autom^[tpr] + anfang, dum, tpol);
+            such(dum, automn + 1, autom^[tpr] - 1 + schluss, tpor, dum);
+            FOR tpo := tpol TO tpor DO
+            BEGIN
+              d := autom^[tpo] - autom^[tpr];
+              tstat.dazu(d);
+              incex(diff^[trunc((d - anfang) / klasse) + 1], um);
+            END;
+            IF (tpr MOD 128) = 0 THEN Write(tpr : 7, #8#8#8#8#8#8#8);
+          END;
+        END;
+  tstat.rechnen;
+END;
 
-procedure intervallhistogramm.bild;
-var   rand:word;
-begin
-grafikintervall.bild;
-rand:=getmaxx div 2;
-setcolor(getmaxcolor); settextjustify(lefttext,centertext);
-outtextxy(rand,4, 'Trigger Points: '+wort(gesamt));
-outtextxy(rand,14,'Evaluated     : '+wort(tstat.n));
-outtextxy(rand,24,'Mean Interval : '+extwort(extzeit(tstat.mx),3,3)+' ms ñ '
-                  +extwort(extzeit(tstat.rox),3,3)+' ms');
-outtextxy(0,4,'"INTERVAL HISTOGRAM"');
-end;
+PROCEDURE autokorrelogramm.image;
+VAR
+  rand : WORD;
+BEGIN
+  grafikintervall.image;
+  rand := getmaxx DIV 2;
+  setcolor(getmaxcolor);
+  settextjustify(lefttext, centertext);
+  outtextxy(rand, 4, 'Trigger Points : ' + wort(gesamt));
+  outtextxy(rand, 14, 'Evaluated      : ' + wort(tstat.n));
+  outtextxy(rand, 24, 'Mean Time      : ' + extwort(extzeit(tstat.mx), 3, 3) + ' ms ñ ' +
+    extwort(extzeit(tstat.rox), 3, 3) + ' ms');
+  outtextxy(0, 4, '"AUTO CORRELOGRAM"');
+END;
 
-procedure intervallhistogramm.plot (gr:byte);
-begin
-grafikintervall.plot(gr);
-write(plt,kleinschr,plpa(diffn,0),'DI0,1;CP0,-2;');
-write(plt,pllb('INTERVAL HISTOGRAM'),'CP;CP;');
-write(plt,pllb(' Trigger Points: '+wort(gesamt)),'CP;');
-write(plt,pllb(' Evaluated     : '+wort(tstat.n)),'CP;');
-write(plt,pllb(' Mean Interval : '+extwort(extzeit(tstat.mx),3,3)+' ms +/- '
-                +extwort(extzeit(tstat.rox),3,3)+' ms'));
-end;
+PROCEDURE autokorrelogramm.plot(gr : BYTE);
+BEGIN
+  grafikintervall.plot(gr);
+  Write(plt, kleinschr, plpa(diffn, 0), 'DI0,1;CP0,-2;');
+  Write(plt, pllb('AUTO CORRELOGRAM'), 'CP;CP;');
+  Write(plt, pllb(' Trigger Points: ' + wort(gesamt)), 'CP;');
+  Write(plt, pllb(' Evaluated     : ' + wort(tstat.n)), 'CP;');
+  Write(plt, pllb(' Mean Time     : ' + extwort(extzeit(tstat.mx), 3, 3) + ' ms +/- ' +
+    extwort(extzeit(tstat.rox), 3, 3) + ' ms'));
+END;
 
-constructor autokorrelogramm.aufbauen(rtl:char; anf,sch:messwert;
-                                      din:word; ybe:extended);
-begin
-grafikintervall.aufbauen(rtl,anf,sch,din,ybe);
-end;
+CONSTRUCTOR kreuzkorrelogramm.construct(rtl, otl : CHAR; anf, sch : typeextended; din : WORD;
+  ybe : EXTENDED);
+BEGIN
+  obj := otl;
+  grafikintervall.construct(rtl, anf, sch, din, ybe);
+END;
 
-procedure autokorrelogramm.berechnen;
-var   um:extended;
-      tpr,tpo:longint;
-      tpol,tpor,dum:exword;
-      d:messwert;
-      nr:byte;
-begin
-gesamt:=tliste[ref]^.triggsum;
-if gesamt=0 then begin
-   write('No trigger point'); pieps; warte;
-   abbruch:=true; exit end;
-fillchar(diff^,sizeof(bildfeld),0);
-tstat.init;
-um:=1/gesamt;
-with tliste[ref]^ do for nr:=1 to filenr do with fil[nr] do
- if automda then begin
-   write(#13); clreol;
-   write('Processing: ',liste[nr].name,', trigger point no.:');
-   for tpr:=1 to automn do begin
-      such(0,automn+1,autom^[tpr]+anfang,dum,tpol);
-      such(dum,automn+1,autom^[tpr]-1+schluss,tpor,dum);
-      for tpo:=tpol to tpor do begin
-         d:=autom^[tpo]-autom^[tpr];
-         tstat.dazu(d);
-         incex(diff^[trunc((d-anfang)/klasse)+1],um);
-         end;
-      if (tpr mod 128) = 0 then write(tpr:7,#8#8#8#8#8#8#8);
-      end;
-   end;
-tstat.rechnen;
-end;
+PROCEDURE kreuzkorrelogramm.berechnen;
+VAR
+  um :              EXTENDED;
+  tpr, tpo :        LONGINT;
+  tpol, tpor, dum : midint32;
+  d :               typeextended;
+  nr :              BYTE;
+BEGIN
+  refn := tliste[ref]^.triggsum;
+  objn := tliste[obj]^.triggsum;
+  IF (refn = 0) OR (objn = 0) THEN
+  BEGIN
+    Write('Empty trigger list.');
+    pieps;
+    warte;
+    abortion := True;
+    exit;
+  END;
+  fillchar(diff^, sizeof(imagesbuffer), 0);
+  nstat.init;
+  tstat.init;
+  um := 1 / refn;
+  FOR nr := 1 TO filenr DO IF tliste[ref]^.fil[nr].automda THEN
+      WITH tliste[obj]^, fil[nr] DO
+      BEGIN
+        Write(#13);
+        clreol;
+        Write('Processing: ', liste[nr].Name, ', trigger point no.:');
+        FOR tpr := 1 TO tliste[ref]^.fil[nr].automn DO
+        BEGIN
+          such(0, automn + 1, tliste[ref]^.fil[nr].autom^[tpr] + anfang, dum, tpol);
+          such(dum, automn + 1, tliste[ref]^.fil[nr].autom^[tpr] - 1 + schluss, tpor, dum);
+          nstat.dazu(tpor + 1 - tpol);
+          FOR tpo := tpol TO tpor DO
+          BEGIN
+            d := autom^[tpo] - tliste[ref]^.fil[nr].autom^[tpr];
+            tstat.dazu(d);
+            incex(diff^[trunc((d - anfang) / klasse) + 1], um);
+          END;
+          IF (tpr MOD 128) = 0 THEN Write(tpr : 7, #8#8#8#8#8#8#8);
+        END;
+      END;
+  nstat.rechnen;
+  tstat.rechnen;
+END;
 
-procedure autokorrelogramm.bild;
-var   rand:word;
-begin
-grafikintervall.bild;
-rand:=getmaxx div 2;
-setcolor(getmaxcolor); settextjustify(lefttext,centertext);
-outtextxy(rand,4, 'Trigger Points : '+wort(gesamt));
-outtextxy(rand,14,'Evaluated      : '+wort(tstat.n));
-outtextxy(rand,24,'Mean Time      : '+extwort(extzeit(tstat.mx),3,3)+' ms ñ '
-                  +extwort(extzeit(tstat.rox),3,3)+' ms');
-outtextxy(0,4,'"AUTO CORRELOGRAM"');
-end;
+PROCEDURE kreuzkorrelogramm.image;
+VAR
+  rand : WORD;
+BEGIN
+  grafikintervall.image;
+  rand := getmaxx DIV 2;
+  setcolor(getmaxcolor);
+  settextjustify(lefttext, centertext);
+  outtextxy(rand, 4, 'References: ' + wort(refn));
+  outtextxy(rand, 14, 'Events    : ' + wort(round(nstat.sx)) + ' (' + wort(objn) + ')');
+  outtextxy(rand, 24, 'Evt./Ref. : ' + extwort(nstat.mx, 3, 1) + ' ñ ' + extwort(nstat.rox, 3, 1));
+  outtextxy(rand, 34, 'Mean Time : ' + extwort(extzeit(tstat.mx), 3, 3) + ' ms ñ ' +
+    extwort(extzeit(tstat.rox), 3, 3) + ' ms');
+  outtextxy(0, 4, '"CROSS CORRELOGRAM"');
+END;
 
-procedure autokorrelogramm.plot (gr:byte);
-begin
-grafikintervall.plot(gr);
-write(plt,kleinschr,plpa(diffn,0),'DI0,1;CP0,-2;');
-write(plt,pllb('AUTO CORRELOGRAM'),'CP;CP;');
-write(plt,pllb(' Trigger Points: '+wort(gesamt)),'CP;');
-write(plt,pllb(' Evaluated     : '+wort(tstat.n)),'CP;');
-write(plt,pllb(' Mean Time     : '+extwort(extzeit(tstat.mx),3,3)+' ms +/- '
-                +extwort(extzeit(tstat.rox),3,3)+' ms'));
-end;
+PROCEDURE kreuzkorrelogramm.plot(gr : BYTE);
+BEGIN
+  grafikintervall.plot(gr);
+  Write(plt, kleinschr, plpa(diffn, 0), 'DI0,1;CP0,-2;');
+  Write(plt, pllb('CROSS CORRELOGRAM'), 'CP;CP;');
+  Write(plt, pllb(' References    : ' + wort(refn)) + 'CP;');
+  Write(plt, pllb(' Events        : ' + wort(round(nstat.sx)) + ' (' + wort(objn) + ')') + 'CP;');
+  Write(plt, pllb(' Evt./Ref.     : ' + extwort(nstat.mx, 3, 1) + ' +/- ' + extwort(nstat.rox, 3, 1)) + 'CP;');
+  Write(plt, pllb(' Mean Time     : ' + extwort(extzeit(tstat.mx), 3, 3) + ' ms +/- ' +
+    extwort(extzeit(tstat.rox), 3, 3) + ' ms'));
+END;
 
-constructor kreuzkorrelogramm.aufbauen(rtl,otl:char; anf,sch:messwert;
-                                       din:word; ybe:extended);
-begin
-obj:=otl;
-grafikintervall.aufbauen(rtl,anf,sch,din,ybe);
-end;
+CONSTRUCTOR psthistogramm.construct(rtl, otl : CHAR; aph, eph : SHORTINT; anf, sch : typeextended;
+  din : WORD; ybe : EXTENDED);
+BEGIN
+  obj   := otl;
+  anfph := aph;
+  endph := eph;
+  grafikintervall.construct(rtl, anf, sch, din, ybe);
+END;
 
-procedure kreuzkorrelogramm.berechnen;
-var   um:extended;
-      tpr,tpo:longint;
-      tpol,tpor,dum:exword;
-      d:messwert;
-      nr:byte;
-begin
-refn:=tliste[ref]^.triggsum;
-objn:=tliste[obj]^.triggsum;
-if (refn=0) or (objn=0) then begin
-   write('Empty trigger list.'); pieps; warte;
-   abbruch:=true; exit end;
-fillchar(diff^,sizeof(bildfeld),0);
-nstat.init; tstat.init;
-um:=1/refn;
-for nr:=1 to filenr do if tliste[ref]^.fil[nr].automda then
-  with tliste[obj]^, fil[nr] do begin
-   write(#13); clreol;
-   write('Processing: ',liste[nr].name,', trigger point no.:');
-   for tpr:=1 to tliste[ref]^.fil[nr].automn do begin
-      such(0,automn+1,tliste[ref]^.fil[nr].autom^[tpr]+anfang,dum,tpol);
-      such(dum,automn+1,tliste[ref]^.fil[nr].autom^[tpr]-1+schluss,tpor,dum);
-      nstat.dazu(tpor+1-tpol);
-      for tpo:=tpol to tpor do begin
-         d:=autom^[tpo]-tliste[ref]^.fil[nr].autom^[tpr];
-         tstat.dazu(d);
-         incex(diff^[trunc((d-anfang)/klasse)+1],um);
-         end;
-      if (tpr mod 128) = 0 then write(tpr:7,#8#8#8#8#8#8#8);
-      end;
-   end;
-nstat.rechnen; tstat.rechnen;
-end;
+PROCEDURE psthistogramm.berechnen;
+VAR
+  um : EXTENDED;
+  nr : BYTE;
 
-procedure kreuzkorrelogramm.bild;
-var   rand:word;
-begin
-grafikintervall.bild;
-rand:=getmaxx div 2;
-setcolor(getmaxcolor); settextjustify(lefttext,centertext);
-outtextxy(rand,4, 'References: '+wort(refn));
-outtextxy(rand,14,'Events    : '+wort(round(nstat.sx))+' ('+wort(objn)+')');
-outtextxy(rand,24,'Evt./Ref. : '+extwort(nstat.mx,3,1)+' ñ '+extwort(nstat.rox,3,1));
-outtextxy(rand,34,'Mean Time : '+extwort(extzeit(tstat.mx),3,3)+' ms ñ '
-                  +extwort(extzeit(tstat.rox),3,3)+' ms');
-outtextxy(0,4,'"CROSS CORRELOGRAM"');
-end;
+  PROCEDURE durchzaehlen(VAR refliste, objliste : triggerdaten);
+  VAR
+    tpol1, tpol2, tpor1, tpor2, tpol, tpor, dum : midint32;
+    tpr, tpo : LONGINT;
+    d :        typeextended;
+  BEGIN
+    FOR tpr := 1 TO refliste.automn DO
+    BEGIN
+      objliste.such(0, objliste.automn + 1, refliste.autom^[tpr] + anfang, dum, tpol1);
+      objliste.such(dum, objliste.automn + 1, refliste.autom^[tpr] - 1 + schluss, tpor1, dum);
+      objliste.such(0, objliste.automn + 1, refliste.autom^[tpr + anfph], dum, tpol2);
+      objliste.such(dum, objliste.automn + 1, refliste.autom^[tpr + endph] - 1, tpor2, dum);
+      tpor := min(tpor1, tpor2);
+      tpol := max(tpol1, tpol2);
+      nstat.dazu(max(tpor + 1 - tpol, 0));
+      FOR tpo := tpol TO tpor DO
+      BEGIN
+        d := objliste.autom^[tpo] - refliste.autom^[tpr];
+        tstat.dazu(d);
+        incex(diff^[trunc((d - anfang) / klasse) + 1], um);
+      END;
+      IF (tpr MOD 128) = 0 THEN Write(tpr : 7, #8#8#8#8#8#8#8);
+    END;
+  END;
 
-procedure kreuzkorrelogramm.plot (gr:byte);
-begin
-grafikintervall.plot(gr);
-write(plt,kleinschr,plpa(diffn,0),'DI0,1;CP0,-2;');
-write(plt,pllb('CROSS CORRELOGRAM'),'CP;CP;');
-write(plt,pllb(' References    : '+wort(refn))+'CP;');
-write(plt,pllb(' Events        : '+wort(round(nstat.sx))+' ('+wort(objn)+')')+'CP;');
-write(plt,pllb(' Evt./Ref.     : '+extwort(nstat.mx,3,1)+' +/- '+extwort(nstat.rox,3,1))+'CP;');
-write(plt,pllb(' Mean Time     : '+extwort(extzeit(tstat.mx),3,3)+' ms +/- '
-                +extwort(extzeit(tstat.rox),3,3)+' ms'));
-end;
+BEGIN
+  refn := tliste[ref]^.triggsum;
+  objn := tliste[obj]^.triggsum;
+  IF (refn = 0) OR (objn = 0) THEN
+  BEGIN
+    Write('Empty trigger list.');
+    pieps;
+    warte;
+    abortion := True;
+    exit;
+  END;
+  fillchar(diff^, sizeof(imagesbuffer), 0);
+  nstat.init;
+  tstat.init;
+  um := 1 / refn;
+  FOR nr := 1 TO filenr DO IF tliste[ref]^.fil[nr].automda THEN
+    BEGIN
+      Write(#13);
+      clreol;
+      Write('Processing: ', liste[nr].Name, ', trigger point no.:');
+      durchzaehlen(tliste[ref]^.fil[nr], tliste[obj]^.fil[nr]);
+    END;
+  nstat.rechnen;
+  tstat.rechnen;
+END;
 
-constructor psthistogramm.aufbauen(rtl,otl:char; aph,eph:shortint;
-                                   anf,sch:messwert; din:word; ybe:extended);
-begin
-obj:=otl;
-anfph:=aph; endph:=eph;
-grafikintervall.aufbauen(rtl,anf,sch,din,ybe);
-end;
+PROCEDURE psthistogramm.image;
+VAR
+  rand : WORD;
+BEGIN
+  grafikintervall.image;
+  rand := getmaxx DIV 2;
+  setcolor(getmaxcolor);
+  settextjustify(lefttext, centertext);
+  outtextxy(rand, 4, 'References: ' + wort(refn));
+  outtextxy(rand, 14, 'Events    : ' + wort(round(nstat.sx)) + ' (' + wort(objn) + ')');
+  outtextxy(rand, 24, 'Evt./Ref. : ' + extwort(nstat.mx, 3, 1) + ' ñ ' + extwort(nstat.rox, 3, 1));
+  outtextxy(rand, 34, 'Mean Time : ' + extwort(extzeit(tstat.mx), 3, 3) + ' ms ñ ' +
+    extwort(extzeit(tstat.rox), 3, 3) + ' ms');
+  outtextxy(0, 4, '"PST HISTOGRAM"');
+END;
 
-procedure psthistogramm.berechnen;
-var   um:extended;
-      nr:byte;
-procedure durchzaehlen (var refliste,objliste:triggerdaten);
-var   tpol1,tpol2,tpor1,tpor2,tpol,tpor,dum:exword;
-      tpr,tpo:longint;
-      d:messwert;
-begin
-for tpr:=1 to refliste.automn do begin
-   objliste.such(0,objliste.automn+1,refliste.autom^[tpr]+anfang,dum,tpol1);
-   objliste.such(dum,objliste.automn+1,refliste.autom^[tpr]-1+schluss,tpor1,dum);
-   objliste.such(0,objliste.automn+1,refliste.autom^[tpr+anfph],dum,tpol2);
-   objliste.such(dum,objliste.automn+1,refliste.autom^[tpr+endph]-1,tpor2,dum);
-   tpor:=min(tpor1,tpor2); tpol:=max(tpol1,tpol2);
-   nstat.dazu(max(tpor+1-tpol,0));
-   for tpo:=tpol to tpor do begin
-      d:=objliste.autom^[tpo]-refliste.autom^[tpr];
-      tstat.dazu(d);
-      incex(diff^[trunc((d-anfang)/klasse)+1],um);
-      end;
-   if (tpr mod 128) = 0 then write(tpr:7,#8#8#8#8#8#8#8);
-   end;
-end;
+PROCEDURE psthistogramm.plot(gr : BYTE);
+BEGIN
+  grafikintervall.plot(gr);
+  Write(plt, kleinschr, plpa(diffn, 0), 'DI0,1;CP0,-2;');
+  Write(plt, pllb('PST HISTOGRAM'), 'CP;CP;');
+  Write(plt, pllb(' References    : ' + wort(refn)) + 'CP;');
+  Write(plt, pllb(' Events        : ' + wort(round(nstat.sx)) + ' (' + wort(objn) + ')') + 'CP;');
+  Write(plt, pllb(' Evt./Ref.     : ' + extwort(nstat.mx, 3, 1) + ' +/- ' + extwort(nstat.rox, 3, 1)) + 'CP;');
+  Write(plt, pllb(' Mean Time     : ' + extwort(extzeit(tstat.mx), 3, 3) + ' ms +/- ' +
+    extwort(extzeit(tstat.rox), 3, 3) + ' ms'));
+END;
 
-begin
-refn:=tliste[ref]^.triggsum;
-objn:=tliste[obj]^.triggsum;
-if (refn=0) or (objn=0) then begin
-   write('Empty trigger list.'); pieps; warte;
-   abbruch:=true; exit end;
-fillchar(diff^,sizeof(bildfeld),0);
-nstat.init; tstat.init;
-um:=1/refn;
-for nr:=1 to filenr do if tliste[ref]^.fil[nr].automda then begin
-   write(#13); clreol;
-   write('Processing: ',liste[nr].name,', trigger point no.:');
-   durchzaehlen(tliste[ref]^.fil[nr],tliste[obj]^.fil[nr]);
-   end;
-nstat.rechnen; tstat.rechnen;
-end;
+CONSTRUCTOR latenzhistogramm.construct(rtl, otl : CHAR; anf, sch : typeextended; din : WORD;
+  ybe : EXTENDED);
+BEGIN
+  obj := otl;
+  grafikintervall.construct(rtl, anf, sch, din, ybe);
+END;
 
-procedure psthistogramm.bild;
-var   rand:word;
-begin
-grafikintervall.bild;
-rand:=getmaxx div 2;
-setcolor(getmaxcolor); settextjustify(lefttext,centertext);
-outtextxy(rand,4, 'References: '+wort(refn));
-outtextxy(rand,14,'Events    : '+wort(round(nstat.sx))+' ('+wort(objn)+')');
-outtextxy(rand,24,'Evt./Ref. : '+extwort(nstat.mx,3,1)+' ñ '+extwort(nstat.rox,3,1));
-outtextxy(rand,34,'Mean Time : '+extwort(extzeit(tstat.mx),3,3)+' ms ñ '
-                  +extwort(extzeit(tstat.rox),3,3)+' ms');
-outtextxy(0,4,'"PST HISTOGRAM"');
-end;
+PROCEDURE latenzhistogramm.berechnen;
+VAR
+  um :       EXTENDED;
+  tpr :      LONGINT;
+  tpo, dum : midint32;
+  d :        typeextended;
+  nr :       BYTE;
+BEGIN
+  refn := tliste[ref]^.triggsum;
+  IF (refn = 0) OR (tliste[obj]^.triggsum = 0) THEN
+  BEGIN
+    Write('Empty trigger list.');
+    pieps;
+    warte;
+    abortion := True;
+    exit;
+  END;
+  fillchar(diff^, sizeof(imagesbuffer), 0);
+  tstat.init;
+  um := 1 / refn;
+  FOR nr := 1 TO filenr DO IF tliste[ref]^.fil[nr].automda THEN
+      WITH tliste[obj]^, fil[nr] DO
+      BEGIN
+        Write(#13);
+        clreol;
+        Write('Processing: ', liste[nr].Name, ', trigger point no.:');
+        FOR tpr := 1 TO tliste[ref]^.fil[nr].automn DO
+        BEGIN
+          such(0, automn + 1, tliste[ref]^.fil[nr].autom^[tpr] + anfang, dum, tpo);
+          d := autom^[tpo] - tliste[ref]^.fil[nr].autom^[tpr];
+          IF d <= schluss THEN
+          BEGIN
+            tstat.dazu(d);
+            incex(diff^[trunc((d - anfang) / klasse) + 1], um);
+          END;
+          IF (tpr MOD 128) = 0 THEN Write(tpr : 7, #8#8#8#8#8#8#8);
+        END;
+      END;
+  tstat.rechnen;
+END;
 
-procedure psthistogramm.plot (gr:byte);
-begin
-grafikintervall.plot(gr);
-write(plt,kleinschr,plpa(diffn,0),'DI0,1;CP0,-2;');
-write(plt,pllb('PST HISTOGRAM'),'CP;CP;');
-write(plt,pllb(' References    : '+wort(refn))+'CP;');
-write(plt,pllb(' Events        : '+wort(round(nstat.sx))+' ('+wort(objn)+')')+'CP;');
-write(plt,pllb(' Evt./Ref.     : '+extwort(nstat.mx,3,1)+' +/- '+extwort(nstat.rox,3,1))+'CP;');
-write(plt,pllb(' Mean Time     : '+extwort(extzeit(tstat.mx),3,3)+' ms +/- '
-                +extwort(extzeit(tstat.rox),3,3)+' ms'));
-end;
+PROCEDURE latenzhistogramm.image;
+VAR
+  rand : WORD;
+BEGIN
+  grafikintervall.image;
+  rand := getmaxx DIV 2;
+  setcolor(getmaxcolor);
+  settextjustify(lefttext, centertext);
+  outtextxy(rand, 4, 'References: ' + wort(refn));
+  outtextxy(rand, 14, 'Events    : ' + wort(tstat.n));
+  outtextxy(rand, 24, 'Latency   : ' + extwort(extzeit(tstat.mx), 3, 3) + ' ms ñ ' +
+    extwort(extzeit(tstat.rox), 3, 3) + ' ms');
+  outtextxy(0, 4, '"LATENCY HISTOGRAM"');
+END;
 
-constructor latenzhistogramm.aufbauen(rtl,otl:char; anf,sch:messwert;
-                                      din:word; ybe:extended);
-begin
-obj:=otl;
-grafikintervall.aufbauen(rtl,anf,sch,din,ybe);
-end;
-
-procedure latenzhistogramm.berechnen;
-var   um:extended;
-      tpr:longint;
-      tpo,dum:exword;
-      d:messwert;
-      nr:byte;
-begin
-refn:=tliste[ref]^.triggsum;
-if (refn=0) or (tliste[obj]^.triggsum=0) then begin
-   write('Empty trigger list.'); pieps; warte;
-   abbruch:=true; exit end;
-fillchar(diff^,sizeof(bildfeld),0);
-tstat.init;
-um:=1/refn;
-for nr:=1 to filenr do if tliste[ref]^.fil[nr].automda then
-  with tliste[obj]^, fil[nr] do begin
-   write(#13); clreol;
-   write('Processing: ',liste[nr].name,', trigger point no.:');
-   for tpr:=1 to tliste[ref]^.fil[nr].automn do begin
-      such(0,automn+1,tliste[ref]^.fil[nr].autom^[tpr]+anfang,dum,tpo);
-      d:=autom^[tpo]-tliste[ref]^.fil[nr].autom^[tpr];
-      if d<=schluss then begin
-         tstat.dazu(d);
-         incex(diff^[trunc((d-anfang)/klasse)+1],um);
-         end;
-      if (tpr mod 128) = 0 then write(tpr:7,#8#8#8#8#8#8#8);
-      end;
-   end;
-tstat.rechnen;
-end;
-
-procedure latenzhistogramm.bild;
-var   rand:word;
-begin
-grafikintervall.bild;
-rand:=getmaxx div 2;
-setcolor(getmaxcolor); settextjustify(lefttext,centertext);
-outtextxy(rand,4, 'References: '+wort(refn));
-outtextxy(rand,14,'Events    : '+wort(tstat.n));
-outtextxy(rand,24,'Latency   : '+extwort(extzeit(tstat.mx),3,3)+' ms ñ '
-                  +extwort(extzeit(tstat.rox),3,3)+' ms');
-outtextxy(0,4,'"LATENCY HISTOGRAM"');
-end;
-
-procedure latenzhistogramm.plot (gr:byte);
-begin
-grafikintervall.plot(gr);
-write(plt,kleinschr,plpa(diffn,0),'DI0,1;CP0,-2;');
-write(plt,pllb('LATENCY HISTOGRAM'),'CP;CP;');
-write(plt,pllb(' References    : '+wort(refn)),'CP;');
-write(plt,pllb(' Events        : '+wort(tstat.n)),'CP;');
-write(plt,pllb(' Latency       : '+extwort(extzeit(tstat.mx),3,3)+' ms +/- '
-                +extwort(extzeit(tstat.rox),3,3)+' ms'));
-end;
+PROCEDURE latenzhistogramm.plot(gr : BYTE);
+BEGIN
+  grafikintervall.plot(gr);
+  Write(plt, kleinschr, plpa(diffn, 0), 'DI0,1;CP0,-2;');
+  Write(plt, pllb('LATENCY HISTOGRAM'), 'CP;CP;');
+  Write(plt, pllb(' References    : ' + wort(refn)), 'CP;');
+  Write(plt, pllb(' Events        : ' + wort(tstat.n)), 'CP;');
+  Write(plt, pllb(' Latency       : ' + extwort(extzeit(tstat.mx), 3, 3) + ' ms +/- ' +
+    extwort(extzeit(tstat.rox), 3, 3) + ' ms'));
+END;
 
 { phasenhistogramm }
 
-constructor phasenhistogramm.aufbauen(rtl,otl:char; minabst,maxabst:messwert;
-                                      anfph,schph:extended; din:word; ybe:extended);
-begin
-obj:=otl;
-weis.zaehlen(tliste[rtl]^,minabst,maxabst);
-inherited aufbauen(rtl,anfph,1-frac(1-frac(schph-anfph+1)),din,ybe);
-weis.frei;
-end;
+CONSTRUCTOR phasenhistogramm.construct(rtl, otl : CHAR; minabst, maxabst : typeextended;
+  anfph, schph : EXTENDED; din : WORD; ybe : EXTENDED);
+BEGIN
+  obj := otl;
+  weis.zaehlen(tliste[rtl]^, minabst, maxabst);
+  INHERITED construct(rtl, anfph, 1 - frac(1 - frac(schph - anfph + 1)), din, ybe);
+  weis.frei;
+END;
 
-procedure phasenhistogramm.berechnen;
-var   mklasse,um,faktor:extended;
-      tpr,tpo,versch:longint;
-      tpol,tpor,dum:exword;
-      nr:byte;
-      abst,d:messwert;
-begin
-mklasse:=weis.mittelabstand*klasse;
-if weis.gesamt=0 then begin
-   write('No trigger point.'); pieps; warte; abbruch:=true; exit end;
-refn:=tliste[ref]^.triggsum; objn:=tliste[obj]^.triggsum;
-fillchar(diff^,sizeof(bildfeld),0);
-versch:=round(anfphase*diffnganz); anfphase:=versch/diffnganz;
-nstat.init; phstat.init;
-um:=1/weis.gesamt;
-for nr:=1 to filenr do
-  with tliste[ref]^.fil[nr], weis.weisliste[nr] do if automda then begin
-   write(#13); clreol;
-   for tpr:=1 to n do begin
-      abst:=autom^[t^[tpr]+1]-autom^[t^[tpr]];
-      faktor:=weis.mittelabstand/abst;
-      tliste[obj]^.fil[nr].such(0,tliste[obj]^.fil[nr].automn+1,
-           autom^[t^[tpr]],dum,tpol);
-      tliste[obj]^.fil[nr].such(dum,tliste[obj]^.fil[nr].automn+1,
-           autom^[t^[tpr]]+abst-1,tpor,dum);
-      nstat.dazu(tpor+1-tpol);
-      for tpo:=tpol to tpor do begin
-       d:=tliste[obj]^.fil[nr].autom^[tpo]-autom^[t^[tpr]];
-       if phasentest(d/abst,anfphase,dauerphase) then phstat.dazu(d/abst*2*pi);
-       incex(diff^[(trunc(faktor*d/mklasse)-versch+diffnganz) mod diffnganz +1],um);
-       end;
-      end;
-   end;
-nstat.rechnen; phstat.rechnen;
-end;
+PROCEDURE phasenhistogramm.berechnen;
+VAR
+  mklasse, um, faktor : EXTENDED;
+  tpr, tpo, versch : LONGINT;
+  tpol, tpor, dum : midint32;
+  nr :      BYTE;
+  abst, d : typeextended;
+BEGIN
+  mklasse := weis.mittelabstand * klasse;
+  IF weis.gesamt = 0 THEN
+  BEGIN
+    Write('No trigger point.');
+    pieps;
+    warte;
+    abortion := True;
+    exit;
+  END;
+  refn := tliste[ref]^.triggsum;
+  objn := tliste[obj]^.triggsum;
+  fillchar(diff^, sizeof(imagesbuffer), 0);
+  versch   := round(anfphase * diffnganz);
+  anfphase := versch / diffnganz;
+  nstat.init;
+  phstat.init;
+  um := 1 / weis.gesamt;
+  FOR nr := 1 TO filenr DO
+    WITH tliste[ref]^.fil[nr], weis.weisliste[nr] DO IF automda THEN
+      BEGIN
+        Write(#13);
+        clreol;
+        FOR tpr := 1 TO n DO
+        BEGIN
+          abst   := autom^[t^[tpr] + 1] - autom^[t^[tpr]];
+          faktor := weis.mittelabstand / abst;
+          tliste[obj]^.fil[nr].such(0, tliste[obj]^.fil[nr].automn + 1,
+            autom^[t^[tpr]], dum, tpol);
+          tliste[obj]^.fil[nr].such(dum, tliste[obj]^.fil[nr].automn + 1,
+            autom^[t^[tpr]] + abst - 1, tpor, dum);
+          nstat.dazu(tpor + 1 - tpol);
+          FOR tpo := tpol TO tpor DO
+          BEGIN
+            d := tliste[obj]^.fil[nr].autom^[tpo] - autom^[t^[tpr]];
+            IF phasentest(d / abst, anfphase, dauerphase) THEN phstat.dazu(d / abst * 2 * pi);
+            incex(diff^[(trunc(faktor * d / mklasse) - versch + diffnganz) MOD diffnganz + 1], um);
+          END;
+        END;
+      END;
+  nstat.rechnen;
+  phstat.rechnen;
+END;
 
-procedure phasenhistogramm.bild;
-var   rand:word;
-begin
-inherited bild;
-rand:=getmaxx div 2;
-setcolor(getmaxcolor); settextjustify(lefttext,centertext);
-outtextxy(rand,4, 'Ref.þ Evt.: '+wort(weis.gesamt)+' ('+wort(refn)+') þ '
-                  +wort(round(nstat.sx))+' ('+wort(objn)+')');
-outtextxy(rand,14,'Evt./Ref. : '+extwort(nstat.mx,3,1)+' ñ '+extwort(nstat.rox,3,1));
-outtextxy(rand,24,'Cycle Dur.: '+extwort(extzeit(weis.mittelabstand),3,3)+' ms');
-outtextxy(rand,34,'Phase     : '+extwort(phstat.mph/2/pi,3,3)
-                  +' (l='+extwort(phstat.lvek,4,2)+')');
-outtextxy(0,4,'"PHASE HISTOGRAM"');
-end;
+PROCEDURE phasenhistogramm.image;
+VAR
+  rand : WORD;
+BEGIN
+  INHERITED image;
+  rand := getmaxx DIV 2;
+  setcolor(getmaxcolor);
+  settextjustify(lefttext, centertext);
+  outtextxy(rand, 4, 'Ref.þ Evt.: ' + wort(weis.gesamt) + ' (' + wort(refn) + ') þ ' +
+    wort(round(nstat.sx)) + ' (' + wort(objn) + ')');
+  outtextxy(rand, 14, 'Evt./Ref. : ' + extwort(nstat.mx, 3, 1) + ' ñ ' + extwort(nstat.rox, 3, 1));
+  outtextxy(rand, 24, 'Cycle Dur.: ' + extwort(extzeit(weis.mittelabstand), 3, 3) + ' ms');
+  outtextxy(rand, 34, 'Phase     : ' + extwort(phstat.mph / 2 / pi, 3, 3) + ' (l=' + extwort(phstat.lvek, 4, 2) + ')');
+  outtextxy(0, 4, '"PHASE HISTOGRAM"');
+END;
 
-procedure phasenhistogramm.plot (gr:byte);
-begin
-inherited plot(gr);
-write(plt,kleinschr,plpa(diffn,0),'DI0,1;CP0,-2;');
-write(plt,pllb('PHASE HISTOGRAM'),'CP;CP;');
-write(plt,pllb(' Ref., Evt.    : '+wort(weis.gesamt)+' ('+wort(refn)+') , '
-                  +wort(round(nstat.sx))+' ('+wort(objn)+')')+'CP;');
-write(plt,pllb(' Evt./Ref.     : '+extwort(nstat.mx,3,1)+' +/- '
-               +extwort(nstat.rox,3,1))+'CP;');
-write(plt,pllb(' Cycle Dur.    : '+extwort(extzeit(weis.mittelabstand),3,3)+' ms')+'CP;');
-write(plt,pllb(' Phase         : '+extwort(phstat.mph/2/pi,3,3)
-                  +' (l='+extwort(phstat.lvek,4,2)+')'));
-end;
+PROCEDURE phasenhistogramm.plot(gr : BYTE);
+BEGIN
+  INHERITED plot(gr);
+  Write(plt, kleinschr, plpa(diffn, 0), 'DI0,1;CP0,-2;');
+  Write(plt, pllb('PHASE HISTOGRAM'), 'CP;CP;');
+  Write(plt, pllb(' Ref., Evt.    : ' + wort(weis.gesamt) + ' (' + wort(refn) + ') , ' +
+    wort(round(nstat.sx)) + ' (' + wort(objn) + ')') + 'CP;');
+  Write(plt, pllb(' Evt./Ref.     : ' + extwort(nstat.mx, 3, 1) + ' +/- ' + extwort(nstat.rox, 3, 1)) + 'CP;');
+  Write(plt, pllb(' Cycle Dur.    : ' + extwort(extzeit(weis.mittelabstand), 3, 3) + ' ms') + 'CP;');
+  Write(plt, pllb(' Phase         : ' + extwort(phstat.mph / 2 / pi, 3, 3) + ' (l=' +
+    extwort(phstat.lvek, 4, 2) + ')'));
+END;
 
-end.
+END.

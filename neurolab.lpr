@@ -5,9 +5,9 @@ PROGRAM neurolab;
 {Authors: Berthold Hedwig & Marko Knepper}
 
 {$IFDEF MSDOS}
-{$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X-} {$M 65520,130000,655360}
+{$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X-}// {$M 65520,130000,655360}
 {$ELSE}
-{$A+,B-,E+,F-,G+,I-,N+,P+,T+,V+,X-}{$M 65520,0}
+{$A+,B-,E+,F-,G+,I-,N+,P+,T+,V+,X-}//{$M 65520,0}
 {$ENDIF}
 
 USES
@@ -29,8 +29,8 @@ USES
   nlausw;
 
 CONST
-  version             = '10.01';
-  paramver            = '8.5'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen und komp84 abschaffen!}
+  version          = '10.01';
+  paramver         = '8.5'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen und komp84 abschaffen!}
   {$IFDEF DPMI}
    plattform='DPMI  BP7';
   {$ENDIF}
@@ -41,30 +41,31 @@ CONST
     plattform={$I %FPCTARGET%}+' '+{$I %FPCVERSION%};
   {$ENDIF}
   {$IFDEF FPC}
+  //#7FFFFFFFFFFFFFFF
  maxavail=9223372036854775807; memavail=maxavail;
   {$ENDIF}
   {$ifdef fpc}
- nlbext='.nlx';
+ appext='.nlx';
   {$else}
-  nlbext              = '.nlb';
+  nlbext           = '.nlb';
   {$endif}
-  id : STRING[8]      = 'Neurl' + paramver;
-  sichername : STRING = 'NEUROLAB';
+  id : STRING[8]   = 'Neurl' + paramver;
+  appname : STRING = 'NEUROLAB';
   {$IFDEF fpc}
- pufgroesse=65535;
+ buffersize=65535;
   {$ELSE}
-  pufgroesse          = 32768;
+  pufgroesse       = 32768;
   {$ENDIF}
 
 VAR
   exitsave : pointer;
-  named :    dirstr;
-  namen :    namestr;
-  namee :    extstr;
+  namedir :  dirstr;
+  namename : namestr;
+  nameext :  extstr;
 
-  PROCEDURE verstaerkungen;
+  PROCEDURE win_calibration;
   VAR
-    i, j :    grossint;
+    i, j :    bigint64;
     mult :    EXTENDED;
     textstr : string20;
 
@@ -79,7 +80,7 @@ VAR
     END;
 
   BEGIN
-    ueberschrift(False, 'Calibration', 'Info', farbe2);
+    showtitle(False, 'Calibration', 'Info', farbe2);
     i := 0;
     REPEAT
       window(1, 3, 38, 12);
@@ -131,7 +132,7 @@ VAR
     UNTIL False;
   END;
 
-  PROCEDURE filterung;
+  PROCEDURE win_filter;
   VAR
     indexalt : BYTE;
     wahl :     CHAR;
@@ -158,13 +159,13 @@ VAR
       ke, k, i :     BYTE;
       fi :           string80;
     BEGIN
-      ueberschrift(False, 'Filters', 'Info', farbe3);
+      showtitle(False, 'Filters', 'Info', farbe3);
       belegungzeigen;
       gotoxy(1, 15);
       zwischen('Dialogue', farbe3);
       writeln;
       ke := readint('Input Channel No. (0-' + wort(pred(kan)) + ')', 0);
-      IF NOT (ke IN [0..kan + filtermax - 1]) THEN
+      IF NOT (ke IN [0..kan + maxfilters - 1]) THEN
       BEGIN
         fehler('Undefined channel no.');
         warte;
@@ -180,9 +181,9 @@ VAR
       Write(#13);
       clreol;
       k := kan;
-      WHILE filterdrin(k) AND (k < maxkanal) DO Inc(k);
-      k := readint('Output Channel No. (' + wort(kan) + '-' + wort(kan + filtermax - 1) + ')', k);
-      IF NOT ((k IN [kan..kan + filtermax - 1]) AND (k <> ke)) THEN
+      WHILE filterdrin(k) AND (k < maxchannelsandfilters) DO Inc(k);
+      k := readint('Output Channel No. (' + wort(kan) + '-' + wort(kan + maxfilters - 1) + ')', k);
+      IF NOT ((k IN [kan..kan + maxfilters - 1]) AND (k <> ke)) THEN
       BEGIN
         fehler('Valid output channel no. expected');
         warte;
@@ -213,24 +214,21 @@ VAR
           'f' : filtersetz(new(freqfilterzg, neu(
               upcase(readchar('Frequency: for Trigger List (A-' + listmax + ')', 'A')))), k);
           'g' : filtersetz(new(glattzg, neu(readext('Gliding Average: Width [ms]', 1, 3, 1))), k);
-          'h' : filtersetz(new(hochpasszg, neu(
-              readint('High-Pass: Frequency (min. ' + wort(round(genau * pi / weite * fre)) +
-              ' Hz)', round(fre / 2)))), k);
+          'h' : filtersetz(new(hochpasszg, neu(readint('High-Pass: Frequency (min. ' +
+              wort(round(genau * pi / weite * fre)) + ' Hz)', round(fre / 2)))), k);
           'i' : filtersetz(new(intervallfilterzg, neu(
               upcase(readchar('Interval: for Trigger List (A-' + listmax + ')', 'A')))), k);
           'j' : filtersetz(new(punktefilterzg, neu(
               upcase(readchar('Points: Trigger List (A-' + listmax + ')', 'A')))), k);
           'k' : filtersetz(new(arccoszg, neu), k);
-          'l' : filtersetz(new(tiefpasszg, neu(
-              readint('Low-Pass: Frequency (min. ' + wort(round(genau * pi / weite * fre)) +
-              ' Hz)', round(fre / 2)))), k);
+          'l' : filtersetz(new(tiefpasszg, neu(readint('Low-Pass: Frequency (min. ' +
+              wort(round(genau * pi / weite * fre)) + ' Hz)', round(fre / 2)))), k);
           'm' : filtersetz(new(maxminzg, neu(readext('Max - Min: Width'#29' [ms]', 1, 3, 1))), k);
           'n' : filtersetz(new(glintzg, neu(readext('Gliding Integration: Width [ms]', 1, 3, 1))), k);
           'o' : BEGIN
             einheitensetzen(fre);
-            filtersetz(new(offsetzg, neu(k, round(
-              readext('Offset: Value [' + belegungsliste[k].einhwort + ']', 0, 3, 1) /
-              belegungsliste[k].faktor))), k);
+            filtersetz(new(offsetzg, neu(k, round(readext('Offset: Value [' +
+              belegungsliste[k].einhwort + ']', 0, 3, 1) / belegungsliste[k].faktor))), k);
           END;
           'p' : filtersetz(new(polygonfilterzg, neu(
               upcase(readchar('Polygon: for Trigger List (A-' + listmax + ')', 'A')))), k);
@@ -250,9 +248,9 @@ VAR
           'v' : filtersetz(new(absolutzg, neu), k);
           'w' : filtersetz(new(intzg, neu), k);
           'x' : filtersetz(new(diffilterzg, neu(upcase(readchar('Time Difference: Reference List', 'A')),
-              upcase(readchar('                 Event List', 'B')),
-              readint('                 Time Window [ms]', 100),
-              upcase(readchar('                 n=nearest, f=forward, b=backward', 'n')))), k);
+              upcase(readchar('                 Event List', 'B')), readint(
+              '                 Time Window [ms]', 100), upcase(
+              readchar('                 n=nearest, f=forward, b=backward', 'n')))), k);
           'y' : BEGIN
             einheitensetzen(fre);
             filtersetz(new(streckungzg, neu(k, readext('y-Resolution: max value [' +
@@ -263,16 +261,17 @@ VAR
           '+' : filtersetz(new(additionzg, neu(readint('Summation: Channel No', 0))), k);
           '=' : filtersetz(new(korrelationzg, neu(readint('Correlation: Channel No', 0),
               readext('Correlation: Width [ms]', 1, 3, 1))), k);
-          '#' : filtersetz(new(zaehltfilterzg, neu(upcase(readchar('Count: Trigger List (A-' + listmax + ')', 'A')))), k);
+          '#' : filtersetz(new(zaehltfilterzg,
+              neu(upcase(readchar('Count: Trigger List (A-' + listmax + ')', 'A')))), k);
           '>' : filtersetz(new(asciifilterzg, neu(readstring('ASCII Data: File Name', 'list.asc'),
               upcase(readchar('            Assign to Trigger List (A-' + listmax + ')', 'A')))), k);
           '/' : filtersetz(new(winkelzg, neu(readint('x-y-angle: x channel No', 0))), k);
           '.' : BEGIN
             einheitensetzen(fre);
-            filtersetz(new(digitalzg, neu(k,
-              round(readext('Pulse counter: Threshold [' + belegungsliste[k].einhwort
-              + ']', 500, 3, 1) / belegungsliste[k].faktor), readstring(
-              '               Pulse separation SI unit', '1'), readext('               Pulse separation value', 1, 5, 3))), k);
+            filtersetz(new(digitalzg, neu(k, round(readext('Pulse counter: Threshold [' +
+              belegungsliste[k].einhwort + ']', 500, 3, 1) / belegungsliste[k].faktor),
+              readstring('               Pulse separation SI unit', '1'),
+              readext('               Pulse separation value', 1, 5, 3))), k);
           END
 
           ELSE
@@ -284,7 +283,7 @@ VAR
   BEGIN
     indexalt := kan;
     REPEAT
-      ueberschrift(False, 'Filter Manager', 'Info', farbe2);
+      showtitle(False, 'Filter Manager', 'Info', farbe2);
       liste.zeigen(11, indexalt);
       writeln;
       zwischen('Menu', farbe2);
@@ -327,14 +326,14 @@ VAR
     UNTIL False;
   END;
 
-  PROCEDURE listen;
+  PROCEDURE win_datalist;
   CONST
     aktfile : BYTE = 1;
     k : BYTE       = 0;
   VAR
     i, j : LONGINT;
   BEGIN
-    ueberschrift(False, 'Data List', 'Info', farbe2);
+    showtitle(False, 'Data List', 'Info', farbe2);
     fileliste;
     gotoxy(1, 19);
     zwischen('Dialogue', farbe2);
@@ -364,7 +363,7 @@ VAR
     oeffnen(aktfile);
     i := zwi(messw(readint('Start Time [ms]', 0)));
     clrscr;
-    FOR j := i TO liste[aktfile].ko.anzahl - 1 DO
+    FOR j := i TO liste[aktfile].head.datalength - 1 DO
     BEGIN
       Write(lesef(j, k) : 10);
       IF j MOD 168 = 167 THEN
@@ -385,15 +384,15 @@ VAR
 
     PROCEDURE superposition;
     CONST
-      von : messwert  = 0;
-      bis : messwert  = 1000;
-      akttrind : CHAR = 'A';
+      von : typeextended = 0;
+      bis : typeextended = 1000;
+      akttrind : CHAR    = 'A';
     VAR
-      laenge : grossint;
+      laenge : bigint64;
       chpuff : CHAR;
       grafik : grafiksuperposition;
     BEGIN
-      ueberschrift(False, 'Superposition', 'Info', farbe3);
+      showtitle(False, 'Superposition', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 18);
       zwischen('Dialogue', farbe3);
@@ -420,27 +419,27 @@ VAR
       von    := messwext(readext('Start Time [ms]', extzeit(von), 1, 0));
       bis    := messwext(readext('End Time [ms]  ', extzeit(bis), 1, 0));
       laenge := round(bis - von);
-      IF (laenge > maxanzahl) OR (laenge <= 0) THEN
+      IF (laenge > maxnumber) OR (laenge <= 0) THEN
       BEGIN
         fehler('Undefined time window');
         warte;
         exit;
       END;
-      grafik.aufbauen(kanaele, von, bis, akttrind);
+      grafik.construct(kanaele, von, bis, akttrind);
     END;
 
     PROCEDURE averagen;
     CONST
-      von : messwert  = 0;
-      bis : messwert  = 500;
-      akttrind : CHAR = 'A';
+      von : typeextended = 0;
+      bis : typeextended = 500;
+      akttrind : CHAR    = 'A';
     VAR
-      laenge, platz : grossint;
-      i, gesamt :     grossint;
+      laenge, platz : bigint64;
+      i, gesamt :     bigint64;
       chpuff :        CHAR;
       grafik :        grafikaverage;
     BEGIN
-      ueberschrift(False, 'Averaging', 'Info', farbe3);
+      showtitle(False, 'Averaging', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 18);
       zwischen('Dialogue', farbe3);
@@ -465,12 +464,12 @@ VAR
       IF NOT (kanaele.kn IN [1..32]) THEN exit;
       window(1, 22, 80, 25);
       clrscr;
-      writeln('Maximum Averaging Time: ', zeit(maxanzahl) - 1, ' ms.');
+      writeln('Maximum Averaging Time: ', zeit(maxnumber) - 1, ' ms.');
       von    := messwext(readext('Start Time [ms]', extzeit(von), 1, 0));
       bis    := messwext(readext('End Time [ms]  ', extzeit(bis), 1, 0));
       laenge := round(bis - von);
-      platz  := (laenge + 1) * sizeof(wert);
-      IF (laenge > maxanzahl) OR (laenge <= 0) THEN
+      platz  := (laenge + 1) * sizeof(typedouble);
+      IF (laenge > maxnumber) OR (laenge <= 0) THEN
       BEGIN
         fehler('Undefined time window');
         warte;
@@ -508,7 +507,7 @@ VAR
       gotoxy(1, 23);
       Write('Abort: <Esc>');
       gotoxy(1, 20);
-      grafik.aufbauen(kanaele, von, laenge, akttrind, gesamt);
+      grafik.construct(kanaele, von, laenge, akttrind, gesamt);
       {$ifndef fpc}
       FOR i := 0 TO maxkanal DO IF i IN kanaele.dabei THEN freemem(grafik.mittel[i], platz);
     {$endif}
@@ -516,18 +515,18 @@ VAR
 
     PROCEDURE phasenaveragen;
     CONST
-      von                = 0;
-      minabst : messwert = 0;
-      maxabst : messwert = 10000;
-      akttrind : CHAR    = 'A';
+      von             = 0;
+      minabst : typeextended = 0;
+      maxabst : typeextended = 10000;
+      akttrind : CHAR = 'A';
     VAR
       weis :             triggerweiser;
-      i, laenge, platz : grossint;
-      bis :              messwert;
+      i, laenge, platz : bigint64;
+      bis :              typeextended;
       chpuff :           CHAR;
       grafik :           grafikphasenaverage;
     BEGIN
-      ueberschrift(False, 'Phase Dependent Averaging', 'Info', farbe3);
+      showtitle(False, 'Phase Dependent Averaging', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 18);
       zwischen('Dialogue', farbe3);
@@ -545,7 +544,7 @@ VAR
       IF NOT (kanaele.kn IN [1..32]) THEN exit;
       window(1, 22, 80, 25);
       clrscr;
-      writeln('Maximum Averaging Time: ', zeit(maxanzahl) - 1, ' ms.');
+      writeln('Maximum Averaging Time: ', zeit(maxnumber) - 1, ' ms.');
       minabst := messwext(readext('Min. Cycle Duration [ms]', extzeit(minabst), 1, 0));
       maxabst := messwext(readext('Max. Cycle Duration [ms]', extzeit(maxabst), 1, 0));
       weis.zaehlen(tliste[akttrind]^, minabst, maxabst);
@@ -558,8 +557,8 @@ VAR
       END;
       bis    := weis.mittelabstand;
       laenge := round(bis - von);
-      platz  := (laenge + 1) * sizeof(wert);
-      IF laenge > maxanzahl THEN
+      platz  := (laenge + 1) * sizeof(typedouble);
+      IF laenge > maxnumber THEN
       BEGIN
         fehler('Averaging time too long.');
         warte;
@@ -598,7 +597,7 @@ VAR
       gotoxy(1, 23);
       Write('Abort: <Esc>');
       gotoxy(1, 20);
-      grafik.aufbauen(kanaele, von, laenge, akttrind, weis.gesamt, weis);
+      grafik.construct(kanaele, von, laenge, akttrind, weis.gesamt, weis);
       weis.frei;
       {$ifndef fpc}
       FOR i := 0 TO maxkanal DO IF i IN kanaele.dabei THEN freemem(grafik.mittel[i], platz);
@@ -607,14 +606,14 @@ VAR
 
     PROCEDURE xydiagramm;
     CONST
-      kx : grossint = 0;
-      ky : grossint = 1;
+      kx : bigint64 = 0;
+      ky : bigint64 = 1;
     VAR
-      puff :   grossint;
+      puff :   bigint64;
       liste :  filterliste;
       grafik : grafikxy;
     BEGIN
-      ueberschrift(False, 'X-Y-Diagram', 'Info', farbe3);
+      showtitle(False, 'X-Y-Diagram', 'Info', farbe3);
       belegungzeigen;
       writeln;
       liste.zeigen(7, kan);
@@ -625,7 +624,7 @@ VAR
       Write(#13);
       clreol;
       puff := readint('X-channel', kx);
-      IF NOT (puff IN [0..kan + filtermax - 1]) THEN
+      IF NOT (puff IN [0..kan + maxfilters - 1]) THEN
       BEGIN
         fehler('Undefined channel no.');
         warte;
@@ -634,7 +633,7 @@ VAR
       ELSE
         kx := puff;
       puff := readint('Y-channel', ky);
-      IF NOT (puff IN ([0..kan + filtermax - 1]) - [kx]) THEN
+      IF NOT (puff IN ([0..kan + maxfilters - 1]) - [kx]) THEN
       BEGIN
         fehler('Undefined channel no.');
         warte;
@@ -642,7 +641,7 @@ VAR
       END
       ELSE
         ky := puff;
-      grafik.aufbauen(kx, ky);
+      grafik.construct(kx, ky);
     END;
 
     PROCEDURE ampnormalhist;
@@ -658,10 +657,10 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
       extpuff :    EXTENDED;
-      puff :       grossint;
+      puff :       bigint64;
       liste :      filterliste;
     BEGIN
-      ueberschrift(False, 'Amplitude Histogram', 'Info', farbe3);
+      showtitle(False, 'Amplitude Histogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -688,7 +687,7 @@ VAR
       clreol;
       window(1, 22, 80, zeilmax);
       puff := readint('Channel   ', kanal);
-      IF NOT (puff IN [0..kan + filtermax - 1]) THEN
+      IF NOT (puff IN [0..kan + maxfilters - 1]) THEN
       BEGIN
         fehler('Undefined channel no.');
         warte;
@@ -696,8 +695,8 @@ VAR
       END
       ELSE
         kanal  := puff;
-      wordpuff := readint('Bins (Max. ' + wort(maxfeld) + ')', diffn);
-      IF (wordpuff <= 0) OR (wordpuff > maxfeld) THEN
+      wordpuff := readint('Bins (Max. ' + wort(maxbuffer) + ')', diffn);
+      IF (wordpuff <= 0) OR (wordpuff > maxbuffer) THEN
       BEGIN
         fehler('Undefined number of bins');
         warte;
@@ -717,12 +716,12 @@ VAR
         exit;
       END;
       ybereich := readext('y-Scale Factor   ', ybereich, 4, 2);
-      histogramm.aufbauen(kanal, ref, diffn, ybereich, minsamp, maxsamp);
+      histogramm.construct(kanal, ref, diffn, ybereich, minsamp, maxsamp);
     END;
 
   BEGIN
     REPEAT
-      ueberschrift(False, 'Analog Data', 'Menu', farbe2);
+      showtitle(False, 'Analog Data', 'Menu', farbe2);
       gotoxy(1, 7);
       writeln('          a...Averaging',
         lfcr, '          p...Phase-Dependent Averaging',
@@ -749,8 +748,8 @@ VAR
     PROCEDURE intervallhist;
     CONST
       ref : CHAR          = 'A';
-      von : messwert      = 0;
-      bis : messwert      = 500;
+      von : typeextended  = 0;
+      bis : typeextended  = 500;
       diffn : WORD        = 100;
       ybereich : EXTENDED = 1;
     VAR
@@ -758,7 +757,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      ueberschrift(False, 'Interval Histogram', 'Info', farbe3);
+      showtitle(False, 'Interval Histogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -773,8 +772,8 @@ VAR
       ref      := charpuff;
       von      := messw(readint('Start Time [ms] ', zeit(von)));
       bis      := messw(readint('End Time [ms]   ', zeit(bis)));
-      wordpuff := readint('Bins (Max. ' + wort(maxfeld) + ')', diffn);
-      IF (wordpuff <= 0) OR (wordpuff > maxfeld) THEN
+      wordpuff := readint('Bins (Max. ' + wort(maxbuffer) + ')', diffn);
+      IF (wordpuff <= 0) OR (wordpuff > maxbuffer) THEN
       BEGIN
         fehler('Undefined number of bins');
         warte;
@@ -782,14 +781,14 @@ VAR
       END;
       diffn    := wordpuff;
       ybereich := readext('y-Scale Factor  ', ybereich, 4, 2);
-      histogramm.aufbauen(ref, von, bis, diffn, ybereich);
+      histogramm.construct(ref, von, bis, diffn, ybereich);
     END;
 
     PROCEDURE autokorr;
     CONST
       ref : CHAR          = 'A';
-      von : messwert      = 0;
-      bis : messwert      = 500;
+      von : typeextended  = 0;
+      bis : typeextended  = 500;
       diffn : WORD        = 100;
       ybereich : EXTENDED = 1;
     VAR
@@ -797,7 +796,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      ueberschrift(False, 'Auto Correlogram', 'Info', farbe3);
+      showtitle(False, 'Auto Correlogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -812,8 +811,8 @@ VAR
       ref      := charpuff;
       von      := messw(readint('Start Time [ms] ', zeit(von)));
       bis      := messw(readint('End Time [ms]   ', zeit(bis)));
-      wordpuff := readint('Bins (Max. ' + wort(maxfeld) + ')', diffn);
-      IF (wordpuff <= 0) OR (wordpuff > maxfeld) THEN
+      wordpuff := readint('Bins (Max. ' + wort(maxbuffer) + ')', diffn);
+      IF (wordpuff <= 0) OR (wordpuff > maxbuffer) THEN
       BEGIN
         fehler('Undefined number of bins');
         warte;
@@ -821,15 +820,15 @@ VAR
       END;
       diffn    := wordpuff;
       ybereich := readext('y-Scale Factor  ', ybereich, 4, 2);
-      histogramm.aufbauen(ref, von, bis, diffn, ybereich);
+      histogramm.construct(ref, von, bis, diffn, ybereich);
     END;
 
     PROCEDURE kreuzkorr;
     CONST
       ref : CHAR          = 'A';
       obj : CHAR          = 'B';
-      von : messwert      = 0;
-      bis : messwert      = 500;
+      von : typeextended  = 0;
+      bis : typeextended  = 500;
       diffn : WORD        = 100;
       ybereich : EXTENDED = 1;
     VAR
@@ -837,7 +836,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      ueberschrift(False, 'Cross Correlogram', 'Info', farbe3);
+      showtitle(False, 'Cross Correlogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -860,8 +859,8 @@ VAR
       obj      := charpuff;
       von      := messw(readint('Start Time [ms] ', zeit(von)));
       bis      := messw(readint('End Time [ms]   ', zeit(bis)));
-      wordpuff := readint('Bins (Max. ' + wort(maxfeld) + ')', diffn);
-      IF (diffn <= 0) OR (diffn > maxfeld) THEN
+      wordpuff := readint('Bins (Max. ' + wort(maxbuffer) + ')', diffn);
+      IF (diffn <= 0) OR (diffn > maxbuffer) THEN
       BEGIN
         fehler('Undefined number of bins');
         warte;
@@ -869,15 +868,15 @@ VAR
       END;
       diffn    := wordpuff;
       ybereich := readext('y-Scale Factor  ', ybereich, 4, 2);
-      histogramm.aufbauen(ref, obj, von, bis, diffn, ybereich);
+      histogramm.construct(ref, obj, von, bis, diffn, ybereich);
     END;
 
     PROCEDURE psthist;
     CONST
       ref : CHAR          = 'A';
       obj : CHAR          = 'B';
-      von : messwert      = 0;
-      bis : messwert      = 500;
+      von : typeextended  = 0;
+      bis : typeextended  = 500;
       art : CHAR          = 'O';
       diffn : WORD        = 100;
       ybereich : EXTENDED = 1;
@@ -886,7 +885,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      ueberschrift(False, 'PST-Histogram', 'Info', farbe3);
+      showtitle(False, 'PST-Histogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -909,8 +908,8 @@ VAR
       obj      := charpuff;
       von      := messw(readint('Start Time [ms] ', zeit(von)));
       bis      := messw(readint('End Time [ms]   ', zeit(bis)));
-      wordpuff := readint('Bins (Max. ' + wort(maxfeld) + ')', diffn);
-      IF (wordpuff <= 0) OR (wordpuff > maxfeld) THEN
+      wordpuff := readint('Bins (Max. ' + wort(maxbuffer) + ')', diffn);
+      IF (wordpuff <= 0) OR (wordpuff > maxbuffer) THEN
       BEGIN
         fehler('Undefined number of bins');
         warte;
@@ -918,15 +917,15 @@ VAR
       END;
       diffn    := wordpuff;
       ybereich := readext('y-Scale Factor  ', ybereich, 4, 2);
-      histogramm.aufbauen(ref, obj, -1, 1, von, bis, diffn, ybereich);
+      histogramm.construct(ref, obj, -1, 1, von, bis, diffn, ybereich);
     END;
 
     PROCEDURE latenzhist;
     CONST
       ref : CHAR          = 'A';
       obj : CHAR          = 'B';
-      von : messwert      = 0;
-      bis : messwert      = 500;
+      von : typeextended  = 0;
+      bis : typeextended  = 500;
       diffn : WORD        = 100;
       ybereich : EXTENDED = 1;
     VAR
@@ -934,7 +933,7 @@ VAR
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      ueberschrift(False, 'Latency Histogram', 'Info', farbe3);
+      showtitle(False, 'Latency Histogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -957,8 +956,8 @@ VAR
       obj      := charpuff;
       von      := messw(readint('Start Time [ms] ', zeit(von)));
       bis      := messw(readint('End Time [ms]   ', zeit(bis)));
-      wordpuff := readint('Bins (Max. ' + wort(maxfeld) + ')', diffn);
-      IF (wordpuff <= 0) OR (wordpuff > maxfeld) THEN
+      wordpuff := readint('Bins (Max. ' + wort(maxbuffer) + ')', diffn);
+      IF (wordpuff <= 0) OR (wordpuff > maxbuffer) THEN
       BEGIN
         fehler('Undefined number of bins');
         warte;
@@ -966,25 +965,25 @@ VAR
       END;
       diffn    := wordpuff;
       ybereich := readext('y-Scale Factor  ', ybereich, 4, 2);
-      histogramm.aufbauen(ref, obj, von, bis, diffn, ybereich);
+      histogramm.construct(ref, obj, von, bis, diffn, ybereich);
     END;
 
     PROCEDURE phasenhist;
     CONST
-      ref : CHAR          = 'A';
-      obj : CHAR          = 'B';
-      minabst : messwert  = 0;
-      maxabst : messwert  = 10000;
-      anfph : EXTENDED    = 0;
-      schph : EXTENDED    = 1;
-      diffn : WORD        = 100;
-      ybereich : EXTENDED = 1;
+      ref : CHAR             = 'A';
+      obj : CHAR             = 'B';
+      minabst : typeextended = 0;
+      maxabst : typeextended = 10000;
+      anfph : EXTENDED       = 0;
+      schph : EXTENDED       = 1;
+      diffn : WORD           = 100;
+      ybereich : EXTENDED    = 1;
     VAR
       histogramm : phasenhistogramm;
       charpuff :   CHAR;
       wordpuff :   WORD;
     BEGIN
-      ueberschrift(False, 'Phase Histogram', 'Info', farbe3);
+      showtitle(False, 'Phase Histogram', 'Info', farbe3);
       triggeruebersicht;
       gotoxy(1, 12);
       zwischen('Dialogue', farbe3);
@@ -1021,8 +1020,8 @@ VAR
         warte;
         exit;
       END;
-      wordpuff := readint('Bins (Max. ' + wort(maxfeld) + ')        ', diffn);
-      IF (wordpuff <= 0) OR (wordpuff > maxfeld) THEN
+      wordpuff := readint('Bins (Max. ' + wort(maxbuffer) + ')        ', diffn);
+      IF (wordpuff <= 0) OR (wordpuff > maxbuffer) THEN
       BEGIN
         fehler('Undefined number of bins');
         warte;
@@ -1030,12 +1029,12 @@ VAR
       END;
       diffn    := wordpuff;
       ybereich := readext('y-Scale Factor          ', ybereich, 4, 2);
-      histogramm.aufbauen(ref, obj, minabst, maxabst, anfph, schph, diffn, ybereich);
+      histogramm.construct(ref, obj, minabst, maxabst, anfph, schph, diffn, ybereich);
     END;
 
   BEGIN
     REPEAT
-      ueberschrift(False, 'Interval Data', 'Info', farbe2);
+      showtitle(False, 'Interval Data', 'Info', farbe2);
       triggeruebersicht;
       gotoxy(1, 13);
       zwischen('Menu', farbe2);
@@ -1069,7 +1068,7 @@ VAR
     IF filenr > 0 THEN
     BEGIN
       vorher := exitproc;
-      speicher.init(sichername + nlbext, stcreate, pufgroesse);
+      speicher.init(appname + appext, stcreate, buffersize);
       speicher.Write(id, sizeof(id));
       tlfiles.streamput(speicher);
       nltrigg.streamput(speicher);
@@ -1089,18 +1088,18 @@ VAR
     dname :    dirstr;
     ename :    extstr;
   BEGIN
-    pname := readstring('Configuration file name and path', sichername);
+    pname := readstring('Configuration file name and path', appname);
     fsplit(pname, dname, filename, ename);
-    IF fileschonda(dname + filename + nlbext) THEN
+    IF fileschonda(dname + filename + appext) THEN
       IF upcase(readchar('Overwrite? (Y/N)', 'N')) = 'Y' THEN
       BEGIN
-        sichername := dname + filename;
+        appname := dname + filename;
         sichern;
       END
       ELSE
     ELSE
     BEGIN
-      sichername := dname + filename;
+      appname := dname + filename;
       sichern;
     END;
   END;
@@ -1134,11 +1133,11 @@ VAR
     such :     searchrec;
     idtest :   STRING[8];
   BEGIN
-    findfirst(sichername + nlbext, anyfile, such);
+    findfirst(appname + appext, anyfile, such);
     IF doserror = 0 THEN
     BEGIN
       exitproc := exitsave;
-      speicher.init(sichername + nlbext, stopenread, pufgroesse);
+      speicher.init(appname + appext, stopenread, buffersize);
       speicher.Read(idtest, sizeof(id));
       komp84 := (idtest = 'Neurl8.4') AND (id = 'Neurl8.5');
       IF komp84 THEN idtest := 'Neurl8.5';
@@ -1218,9 +1217,9 @@ BEGIN
   {$IFNDEF FPC}
   heaperror := @heapvoll;
   {$ENDIF}
-  IF paramcount > 0 THEN sichername := ParamStr(1);
-  fsplit(sichername, named, namen, namee);
-  sichername := named + namen;
+  IF paramcount > 0 THEN appname := ParamStr(1);
+  fsplit(appname, namedir, namename, nameext);
+  appname := namedir + namename;
   laerman;
   clrscr;
   textcolor(cyan);
@@ -1237,13 +1236,13 @@ BEGIN
   gotoxy(1, 20);
   holen;
   REPEAT
-    ueberschrift(False, 'Main Menu', 'Info', farbe1);
+    showtitle(False, 'Main Menu', 'Info', farbe1);
     {$ifdef fpc}
    writeln('Version           :   ',version:4,' (',plattform:5,')');
     {$else}
     writeln('Free Memory       :   ', memavail DIV 1024, ' (', maxavail DIV 1024, ') kByte');
     {$endif}
-    writeln('Configuration File:   ', sichername + nlbext, ' (Format:', paramver, ')');
+    writeln('Configuration File:   ', appname + appext, ' (Format:', paramver, ')');
     writeln('Parameters        :   Channels (Max.): ', kan, ', Max. Sampling Rate: ', fre : 4 : 2, ' Hz');
     writeln('Open Files        :   ', filenr);
     gotoxy(1, 9);
@@ -1282,9 +1281,9 @@ BEGIN
         '+' : laerman;
         '-' : laermaus;
         'F' : nlfiles.manager;
-        'C' : verstaerkungen;
-        'M' : filterung;
-        'L' : listen;
+        'C' : win_calibration;
+        'M' : win_filter;
+        'L' : win_datalist;
         'V' : sichten;
         'T' : nltrigg.manager;
         'S' : confsichern;

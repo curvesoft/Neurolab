@@ -1,7 +1,7 @@
 { Borland-Pascal 7.0 / FPC 3.2.2}
 {$ifdef fpc} {$mode TP} {$endif}
 
-unit tlfiles;
+UNIT tlfiles;
 
 {$IFDEF MSDOS}
 {$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X-}
@@ -9,337 +9,419 @@ unit tlfiles;
 {$A+,B-,E+,F-,G+,I-,N+,P+,T+,V+,X-}
 {$ENDIF}
 
-interface
+INTERFACE
 
-uses  crt, dos,
-      objects, bequem,daff,wavpcm,tulab42,tlfilter;
+USES  crt, dos,
+  objects, bequem, daff, wavpcm, tulab42, tlfilter;
 
-const maxfiles=20;
-      {$ifdef fpc} maxmesswert=9223372036854775807.0; {$else} maxmesswert=2147483648.0; {$endif}
+CONST
+  maxfiles = 20;
+  {$ifdef fpc} maxmesswert=9223372036854775807.0; {$else} maxmesswert = 2147483648.0; {$endif}
 
-type  {$ifdef fpc} messwert=extended; wert=double; {$else} messwert=double; wert=single; {$endif}
+TYPE
+  {$ifdef fpc} typeextended=extended; typedouble=double; {$else} messwert = DOUBLE;
+  wert = SINGLE; {$endif}
 
-      { Bei den beiden Listen "blockliste" und "punktliste" wird dieselbe Zeigerstruktur }
-      { verwendet. Am Anfang und am Ende der Liste wird jeweils ein zus‰tzliches Element }
-      { angeh‰ngt, das bei jeder Suche in der Liste zu klein bzw. zu groﬂ ist. Die Werte }
-      { hierf¸År stammen aus den Konstanten anf.. bzw. end... . Erreicht wird die Liste   }
-      { durch einen Zeiger (auf...zeiger), der auf den next-Zeiger (nicht auf das Listen-}
-      { element) des Anfangselementes zeigt.                                             }
+  { Bei den beiden Listen "blockliste" und "punktliste" wird dieselbe Zeigerstruktur }
+  { verwendet. Am Anfang und am Ende der Liste wird jeweils ein zus‰tzliches Element }
+  { angeh‰ngt, das bei jeder Suche in der Liste zu klein bzw. zu groﬂ ist. Die Werte }
+  { hierf¸År stammen aus den Konstanten anf.. bzw. end... . Erreicht wird die Liste   }
+  { durch einen Zeiger (auf...zeiger), der auf den next-Zeiger (nicht auf das Listen-}
+  { element) des Anfangselementes zeigt.                                             }
 
-      auflistenzeiger=^listenzeiger;
-      listenzeiger=^blockliste;
-      blockliste=object (tobject)
-         next,vor:listenzeiger; von,bis:messwert;
-         constructor neu;
-         constructor anfblock;
-         constructor endblock;
-         procedure store (var s:tbufstream);
-         constructor load (var s:tbufstream);
-         end;
+  PPDataBlock = ^PDataBlock;
+  PDataBlock  = ^TDataBlock;
 
-      aufpunktzeiger=^punktzeiger;
-      punktzeiger=^punktliste;
-      punktliste=object (tobject)
-         next,vor:punktzeiger; bei:messwert;
-         constructor neu;
-         constructor anfpunkt;
-         constructor endpunkt;
-         procedure store (var s:tbufstream);
-         constructor load (var s:tbufstream);
-        end;
+  TDataBlock = OBJECT(TObject)
+    Next, Prev :      PDataBlock;
+    frompos, endpos : typeextended;
+    CONSTRUCTOR new;
+    CONSTRUCTOR beginblock;
+    CONSTRUCTOR endblock;
+    PROCEDURE store(VAR s : tbufstream);
+    CONSTRUCTOR load(VAR s : tbufstream);
+  END;
 
-      listenfeld=object
-         name:string[80];
-         named:dirstr; namen:namestr; namee:extstr;
-         ko:kopfdaten;
-         laenge:messwert;
-         block:auflistenzeiger; selbst:aufpunktzeiger;
-         procedure neuzeiger;
-         procedure loeschzeiger;
-         procedure store (var s:tbufstream);
-         procedure load (var s:tbufstream);
-         end;
-      listentyp=packed array[1..maxfiles] of listenfeld;
+  PPBulletList = ^PBulletList;
+  PBulletList  = ^TBulletList;
 
-const kan:byte=0;
-      fre:extended=0;
-      filenr:byte=0;
+  TBulletList = OBJECT(TObject)
+    Next, Prev : PBulletList;
+    bei :        typeextended;
+    CONSTRUCTOR new;
+    CONSTRUCTOR beginbullet;
+    CONSTRUCTOR endbullet;
+    PROCEDURE store(VAR s : tbufstream);
+    CONSTRUCTOR load(VAR s : tbufstream);
+  END;
 
-var   liste:listentyp;
-      offennr:byte;
-      korr:extended;
+  listenfeld = OBJECT
+    Name :           STRING[80];
+    namedir :        dirstr;
+    namename :       namestr;
+    nameext :        extstr;
+    head :           headerdata;
+    length :         typeextended;
+    block :          PPDataBlock;
+    selectedbullet : PPBulletList;
+    PROCEDURE newpointer;
+    PROCEDURE deletepointer;
+    PROCEDURE store(VAR s : tbufstream);
+    PROCEDURE load(VAR s : tbufstream);
+  END;
+  listentyp = PACKED ARRAY[1..maxfiles] OF listenfeld;
 
-procedure oeffnen (nr:byte);
+CONST
+  kan : BYTE     = 0;
+  fre : EXTENDED = 0;
+  filenr : BYTE  = 0;
 
-function zwi (stelle:messwert):grossint;
+VAR
+  liste :   listentyp;
+  offennr : BYTE;
+  korr :    EXTENDED;
 
-function extzeit (stelle:messwert):extended;
-function zeit (stelle:messwert):grossint;
-function messwext (zeitang:extended):messwert;
-function messw (zeitang:grossint):messwert;
+PROCEDURE oeffnen(nr : BYTE);
 
-procedure rein (var zeiger:listenzeiger);
-procedure raus (var zeiger:listenzeiger);
-procedure prein (var zeiger:punktzeiger);
-procedure praus (var zeiger:punktzeiger);
+FUNCTION zwi(stelle : typeextended) : bigint64;
 
-procedure fileliste;
+FUNCTION extzeit(stelle : typeextended) : EXTENDED;
+FUNCTION zeit(stelle : typeextended) : bigint64;
+FUNCTION messwext(zeitang : EXTENDED) : typeextended;
+FUNCTION messw(zeitang : bigint64) : typeextended;
 
-procedure zeigertest;
+PROCEDURE rein(VAR zeiger : PDataBlock);
+PROCEDURE raus(VAR zeiger : PDataBlock);
+PROCEDURE prein(VAR zeiger : PBulletList);
+PROCEDURE praus(VAR zeiger : PBulletList);
 
-procedure streamput (var s:tbufstream);
-procedure streamget (var s:tbufstream);
+PROCEDURE fileliste;
 
-implementation
+PROCEDURE zeigertest;
 
-{const anfblock:blockliste=(next:nil; vor:nil; von:-maxmesswert; bis:-maxmesswert);
-      endblock:blockliste=(next:nil; vor:nil; von:maxmesswert;  bis:maxmesswert);
+PROCEDURE streamput(VAR s : tbufstream);
+PROCEDURE streamget(VAR s : tbufstream);
 
-      anfpunkt:punktliste=(next:nil; vor:nil; bei:-maxmesswert);
-      endpunkt:punktliste=(next:nil; vor:nil; bei:maxmesswert);}
+IMPLEMENTATION
 
-const rblockliste:tstreamrec=(objtype:200;
-                              vmtlink:ofs(typeof(blockliste)^);
-                              load:@blockliste.load;
-                              store:@blockliste.store);
+{
+CONST
+  anfblock : TDataBlock = (Next : nil; Prev : nil; frompos : -maxmesswert; endpos : -maxmesswert);
+  endblock : TDataBlock = (Next : nil; Prev : nil; frompos : maxmesswert; endpos : maxmesswert);
 
-      rpunktliste:tstreamrec=(objtype:201;
-                              vmtlink:ofs(typeof(punktliste)^);
-                              load:@punktliste.load;
-                              store:@punktliste.store);
+  anfpunkt : TBulletList = (Next : nil; Prev : nil; bei : -maxmesswert);
+  endpunkt : TBulletList = (Next : nil; Prev : nil; bei : maxmesswert);
+}
+CONST
+  rblockliste : tstreamrec = (objtype : 200;
+    vmtlink : ofs(typeof(TDataBlock)^);
+    load : @TDataBlock.load;
+    store : @TDataBlock.store);
 
-var   i:byte;
+  rpunktliste : tstreamrec = (objtype : 201;
+    vmtlink : ofs(typeof(TBulletList)^);
+    load : @TBulletList.load;
+    store : @TBulletList.store);
 
-procedure oeffnen (nr:byte);
-begin
-offennr:=nr;
-with liste[nr] do begin
-   oeffne(name,ko);
-   korr:=ko.freq/fre;
-   end;
-end;
+VAR
+  i : BYTE;
 
-function zwi (stelle:messwert):grossint;
-begin
-zwi:=round(stelle*korr);
-end;
+PROCEDURE oeffnen(nr : BYTE);
+BEGIN
+  offennr := nr;
+  WITH liste[nr] DO
+  BEGIN
+    oeffne(Name, head);
+    korr := head.frequency / fre;
+  END;
+END;
 
-function extzeit (stelle:messwert):extended;
-begin
-extzeit:=stelle/fre*1000;
-end;
+FUNCTION zwi(stelle : typeextended) : bigint64;
+BEGIN
+  zwi := round(stelle * korr);
+END;
 
-function zeit (stelle:messwert):grossint;
-begin
-zeit:=round(extzeit(stelle));
-end;
+FUNCTION extzeit(stelle : typeextended) : EXTENDED;
+BEGIN
+  extzeit := stelle / fre * 1000;
+END;
 
-function messwext (zeitang:extended):messwert;
-begin
-messwext:=zeitang*fre/1000;
-end;
+FUNCTION zeit(stelle : typeextended) : bigint64;
+BEGIN
+  zeit := round(extzeit(stelle));
+END;
 
-function messw (zeitang:grossint):messwert;
-begin
-messw:=messwext(zeitang);
-end;
+FUNCTION messwext(zeitang : EXTENDED) : typeextended;
+BEGIN
+  messwext := zeitang * fre / 1000;
+END;
 
-procedure listenfeld.neuzeiger;
-var   hilf:listenzeiger;
-      philf:punktzeiger;
-begin
-new(hilf,anfblock);
-new(hilf^.next,endblock); hilf^.next^.vor:=hilf;
-block:=addr(hilf^.next);
-new(philf,anfpunkt);
-new(philf^.next,endpunkt); philf^.next^.vor:=philf;
-selbst:=addr(philf^.next);
-end;
+FUNCTION messw(zeitang : bigint64) : typeextended;
+BEGIN
+  messw := messwext(zeitang);
+END;
 
-procedure rein (var zeiger:listenzeiger);
-var hilf:listenzeiger;
-begin
-new(hilf,neu);
-hilf^.next:=zeiger; hilf^.vor:=zeiger^.vor;
-zeiger^.vor:=hilf; hilf^.vor^.next:=hilf;
-zeiger:=hilf;
-end;
+PROCEDURE listenfeld.newpointer;
+VAR
+  hilf :  PDataBlock;
+  philf : PBulletList;
+BEGIN
+  new(hilf, beginblock);
+  new(hilf^.Next, endblock);
+  hilf^.Next^.Prev := hilf;
+  block            := addr(hilf^.Next);
+  new(philf, beginbullet);
+  new(philf^.Next, endbullet);
+  philf^.Next^.Prev := philf;
+  selectedbullet    := addr(philf^.Next);
+END;
 
-procedure raus (var zeiger:listenzeiger);
-var hilf:listenzeiger;
-begin
-hilf:=zeiger; zeiger:=hilf^.next;
-hilf^.vor^.next:=hilf^.next; hilf^.next^.vor:=hilf^.vor;
-dispose(hilf,done);
-end;
+PROCEDURE rein(VAR zeiger : PDataBlock);
+VAR
+  hilf : PDataBlock;
+BEGIN
+  new(hilf, new);
+  hilf^.Next       := zeiger;
+  hilf^.Prev       := zeiger^.Prev;
+  zeiger^.Prev     := hilf;
+  hilf^.Prev^.Next := hilf;
+  zeiger           := hilf;
+END;
 
-procedure prein (var zeiger:punktzeiger);
-var hilf:punktzeiger;
-begin
-new(hilf,neu);
-hilf^.next:=zeiger; hilf^.vor:=zeiger^.vor;
-zeiger^.vor:=hilf; hilf^.vor^.next:=hilf;
-zeiger:=hilf;
-end;
+PROCEDURE raus(VAR zeiger : PDataBlock);
+VAR
+  hilf : PDataBlock;
+BEGIN
+  hilf             := zeiger;
+  zeiger           := hilf^.Next;
+  hilf^.Prev^.Next := hilf^.Next;
+  hilf^.Next^.Prev := hilf^.Prev;
+  dispose(hilf, done);
+END;
 
-procedure praus (var zeiger:punktzeiger);
-var hilf:punktzeiger;
-begin
-hilf:=zeiger; zeiger:=hilf^.next;
-hilf^.vor^.next:=hilf^.next; hilf^.next^.vor:=hilf^.vor;
-dispose(hilf,done);
-end;
+PROCEDURE prein(VAR zeiger : PBulletList);
+VAR
+  hilf : PBulletList;
+BEGIN
+  new(hilf, new);
+  hilf^.Next       := zeiger;
+  hilf^.Prev       := zeiger^.Prev;
+  zeiger^.Prev     := hilf;
+  hilf^.Prev^.Next := hilf;
+  zeiger           := hilf;
+END;
 
-procedure listenfeld.loeschzeiger;
-var   hilf:listenzeiger;
-      philf:punktzeiger;
-begin
-hilf:=block^;
-while hilf^.next<>nil do raus(hilf);
-dispose(hilf^.vor,done); dispose(hilf,done);
-philf:=selbst^;
-while philf^.next<>nil do praus(philf);
-dispose(philf^.vor,done); dispose(philf,done);
-end;
+PROCEDURE praus(VAR zeiger : PBulletList);
+VAR
+  hilf : PBulletList;
+BEGIN
+  hilf             := zeiger;
+  zeiger           := hilf^.Next;
+  hilf^.Prev^.Next := hilf^.Next;
+  hilf^.Next^.Prev := hilf^.Prev;
+  dispose(hilf, done);
+END;
 
-constructor blockliste.neu;
-begin end;
+PROCEDURE listenfeld.deletepointer;
+VAR
+  hilf :  PDataBlock;
+  philf : PBulletList;
+BEGIN
+  hilf := block^;
+  WHILE hilf^.Next <> nil DO raus(hilf);
+  dispose(hilf^.Prev, done);
+  dispose(hilf, done);
+  philf := selectedbullet^;
+  WHILE philf^.Next <> nil DO praus(philf);
+  dispose(philf^.Prev, done);
+  dispose(philf, done);
+END;
 
-constructor blockliste.anfblock;
-begin
-next:=nil; vor:=nil; von:=-maxmesswert; bis:=-maxmesswert
-end;
+CONSTRUCTOR TDataBlock.new;
+BEGIN
+END;
 
-constructor blockliste.endblock;
-begin
-next:=nil; vor:=nil; von:=maxmesswert; bis:=maxmesswert
-end;
+CONSTRUCTOR TDataBlock.beginblock;
+BEGIN
+  Next    := nil;
+  Prev    := nil;
+  frompos := -maxmesswert;
+  endpos  := -maxmesswert;
+END;
 
-procedure blockliste.store (var s:tbufstream);
-begin
-s.write(von,sizeof(messwert)); s.write(bis,sizeof(messwert));
-s.put(next);
-end;
+CONSTRUCTOR TDataBlock.endblock;
+BEGIN
+  Next    := nil;
+  Prev    := nil;
+  frompos := maxmesswert;
+  endpos  := maxmesswert;
+END;
 
-constructor blockliste.load (var s:tbufstream);
-begin
-s.read(von,sizeof(messwert)); s.read(bis,sizeof(messwert));
-next:=listenzeiger(s.get);
-if next<>nil then next^.vor:=@self;
-end;
+PROCEDURE TDataBlock.store(VAR s : tbufstream);
+BEGIN
+  s.Write(frompos, sizeof(typeextended));
+  s.Write(endpos, sizeof(typeextended));
+  s.put(Next);
+END;
 
-constructor punktliste.neu;
-begin end;
+CONSTRUCTOR TDataBlock.load(VAR s : tbufstream);
+BEGIN
+  s.Read(frompos, sizeof(typeextended));
+  s.Read(endpos, sizeof(typeextended));
+  Next := PDataBlock(s.get);
+  IF Next <> nil THEN Next^.Prev := @self;
+END;
 
-constructor punktliste.anfpunkt;
-begin
-next:=nil; vor:=nil; bei:=-maxmesswert
-end;
+CONSTRUCTOR TBulletList.new;
+BEGIN
+END;
 
-constructor punktliste.endpunkt;
-begin
-next:=nil; vor:=nil; bei:=maxmesswert
-end;
+CONSTRUCTOR TBulletList.beginbullet;
+BEGIN
+  Next := nil;
+  Prev := nil;
+  bei  := -maxmesswert;
+END;
+
+CONSTRUCTOR TBulletList.endbullet;
+BEGIN
+  Next := nil;
+  Prev := nil;
+  bei  := maxmesswert;
+END;
 
 
-procedure punktliste.store (var s:tbufstream);
-begin
-s.write(bei,sizeof(messwert));
-s.put(next);
-end;
+PROCEDURE TBulletList.store(VAR s : tbufstream);
+BEGIN
+  s.Write(bei, sizeof(typeextended));
+  s.put(Next);
+END;
 
-constructor punktliste.load (var s:tbufstream);
-begin
-s.read(bei,sizeof(messwert));
-next:=punktzeiger(s.get);
-if next<>nil then next^.vor:=@self;
-end;
+CONSTRUCTOR TBulletList.load(VAR s : tbufstream);
+BEGIN
+  s.Read(bei, sizeof(typeextended));
+  Next := PBulletList(s.get);
+  IF Next <> nil THEN Next^.Prev := @self;
+END;
 
-procedure listenfeld.store (var s:tbufstream);
-begin
-s.write(name,sizeof(name)); s.write(ko,sizeof(kopfdaten));
-s.write(laenge,sizeof(messwert));
-s.put(block^);
-end;
+PROCEDURE listenfeld.store(VAR s : tbufstream);
+BEGIN
+  s.Write(Name, sizeof(Name));
+  s.Write(head, sizeof(headerdata));
+  s.Write(length, sizeof(typeextended));
+  s.put(block^);
+END;
 
-procedure listenfeld.load (var s:tbufstream);
-var   hilf:listenzeiger;
-      philf:punktzeiger;
-begin
-s.read(name,sizeof(name)); fsplit(name,named,namen,namee);
-s.read(ko,sizeof(kopfdaten));
-s.read(laenge,sizeof(messwert));
-{ Die Zeigerstruktur der Blˆcke wird neu aufgebaut und die Blˆcke aus dem Stream gelesen }
-new(hilf,anfblock);
-block:=addr(hilf^.next);
-hilf^.next:=listenzeiger(s.get);
-hilf^.next^.vor:=hilf;
-{ Die Zeigerstruktur der Punkte wird neu aufgebaut, die Liste bleibt leer }
-new(philf,anfpunkt);
-new(philf^.next,endpunkt); philf^.next^.vor:=philf;
-selbst:=addr(philf^.next);
-end;
+PROCEDURE listenfeld.load(VAR s : tbufstream);
+VAR
+  hilf :  PDataBlock;
+  philf : PBulletList;
+BEGIN
+  s.Read(Name, sizeof(Name));
+  fsplit(Name, namedir, namename, nameext);
+  s.Read(head, sizeof(headerdata));
+  s.Read(length, sizeof(typeextended));
+  { Die Zeigerstruktur der Blˆcke wird neu aufgebaut und die Blˆcke aus dem Stream gelesen }
+  new(hilf, beginblock);
+  block            := addr(hilf^.Next);
+  hilf^.Next       := PDataBlock(s.get);
+  hilf^.Next^.Prev := hilf;
+  { Die Zeigerstruktur der Punkte wird neu aufgebaut, die Liste bleibt leer }
+  new(philf, beginbullet);
+  new(philf^.Next, endbullet);
+  philf^.Next^.Prev := philf;
+  selectedbullet    := addr(philf^.Next);
+END;
 
-procedure fileliste;
-var   i:byte;
-begin
-writeln('  File list');
-for i:=1 to min(filenr,10) do begin
-   write(i:3,' :  ',liste[i].name);
-   gotoxy(40,wherey); if i+10<=filenr then write(i+10:3,' : ',liste[i+10].name);
-   writeln end;
-end;
+PROCEDURE fileliste;
+VAR
+  i : BYTE;
+BEGIN
+  writeln('  File list');
+  FOR i := 1 TO min(filenr, 10) DO
+  BEGIN
+    Write(i : 3, ' :  ', liste[i].Name);
+    gotoxy(40, wherey);
+    IF i + 10 <= filenr THEN Write(i + 10 : 3, ' : ', liste[i + 10].Name);
+    writeln;
+  END;
+END;
 
-procedure streamput (var s:tbufstream);
-var   ind:byte;
-begin
-s.write(kan,1);              s.write(fre,sizeof(extended));
-s.write(filenr,1);
-for ind:=1 to filenr do liste[ind].store(s);
-end;
+PROCEDURE streamput(VAR s : tbufstream);
+VAR
+  ind : BYTE;
+BEGIN
+  s.Write(kan, 1);
+  s.Write(fre, sizeof(EXTENDED));
+  s.Write(filenr, 1);
+  FOR ind := 1 TO filenr DO liste[ind].store(s);
+END;
 
-procedure streamget (var s:tbufstream);
-var   ind:byte;
-begin
-s.read(kan,1);               s.read(fre,sizeof(extended));
-s.read(filenr,1);
-for ind:=1 to filenr do liste[ind].load(s);
-end;
+PROCEDURE streamget(VAR s : tbufstream);
+VAR
+  ind : BYTE;
+BEGIN
+  s.Read(kan, 1);
+  s.Read(fre, sizeof(EXTENDED));
+  s.Read(filenr, 1);
+  FOR ind := 1 TO filenr DO liste[ind].load(s);
+END;
 
-procedure zeigertest;
-var   i:byte;
-      hilf:listenzeiger;
-      philf:punktzeiger;
-begin
-writeln(lfcr,'Pointer test',lfcr);
-for i:=1 to filenr do begin
-   write('> File no: ',i,'  ');
-   write('>> Blocks  ');
-   hilf:=liste[i].block^;
-   if hilf^.vor^.next<>hilf then begin
-      writeln('### Error at begin'); warte; exit end;
-   while hilf^.next<>nil do begin
-    write(hilf^.von:1:0,' ',hilf^.bis:1:0,' ');
-    if hilf^.next^.vor<>hilf then begin
-       writeln('### Error'); warte; exit end;
-    hilf:=hilf^.next;
-    end;
-   write('>> Points ');
-   philf:=liste[i].selbst^;
-   if philf^.vor^.next<>philf then begin
-      writeln('### Error at begin'); warte; exit end;
-   while philf^.next<>nil do begin
-    write(philf^.bei:1:0,' ');
-    if philf^.next^.vor<>philf then begin
-       writeln('### Error'); warte; exit end;
-    philf:=philf^.next;
-    end;
-   writeln;
-   end;
-writeln(lfcr,'All pointers OK.'); warte;
-end;
+PROCEDURE zeigertest;
+VAR
+  i :     BYTE;
+  hilf :  PDataBlock;
+  philf : PBulletList;
+BEGIN
+  writeln(lfcr, 'Pointer test', lfcr);
+  FOR i := 1 TO filenr DO
+  BEGIN
+    Write('> File no: ', i, '  ');
+    Write('>> Blocks  ');
+    hilf := liste[i].block^;
+    IF hilf^.Prev^.Next <> hilf THEN
+    BEGIN
+      writeln('### Error at begin');
+      warte;
+      exit;
+    END;
+    WHILE hilf^.Next <> nil DO
+    BEGIN
+      Write(hilf^.frompos : 1 : 0, ' ', hilf^.endpos : 1 : 0, ' ');
+      IF hilf^.Next^.Prev <> hilf THEN
+      BEGIN
+        writeln('### Error');
+        warte;
+        exit;
+      END;
+      hilf := hilf^.Next;
+    END;
+    Write('>> Points ');
+    philf := liste[i].selectedbullet^;
+    IF philf^.Prev^.Next <> philf THEN
+    BEGIN
+      writeln('### Error at begin');
+      warte;
+      exit;
+    END;
+    WHILE philf^.Next <> nil DO
+    BEGIN
+      Write(philf^.bei : 1 : 0, ' ');
+      IF philf^.Next^.Prev <> philf THEN
+      BEGIN
+        writeln('### Error');
+        warte;
+        exit;
+      END;
+      philf := philf^.Next;
+    END;
+    writeln;
+  END;
+  writeln(lfcr, 'All pointers OK.');
+  warte;
+END;
 
-begin
-registertype(rblockliste);
-registertype(rpunktliste);
-end.
+BEGIN
+  registertype(rblockliste);
+  registertype(rpunktliste);
+END.
