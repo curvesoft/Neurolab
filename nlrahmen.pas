@@ -24,13 +24,13 @@ CONST
   farbe4      = magenta;
 
 TYPE
-  kanalmenge = OBJECT
-    kn :    BYTE;
+  TChannelVolume = OBJECT
+    channelnumber :    BYTE;
     k :     ARRAY [1..maxchannelsandfilters] OF BYTE;
     dabei : SET OF 0..maxchannelsandfilters;
-    PROCEDURE voreinstellung;
+    PROCEDURE presetup;
     FUNCTION ausgabe : string80;
-    PROCEDURE lesen(enn : BYTE; farbe : BYTE);
+    PROCEDURE read(enn : BYTE; farbe : BYTE);
   END;
 
   filterliste = OBJECT
@@ -45,7 +45,7 @@ TYPE
 
 VAR
   zeilmax : BYTE;
-  kanaele : kanalmenge;
+  kanaele : TChannelVolume;
 
 PROCEDURE zwischen(titel : string20; farbe : BYTE);
 PROCEDURE showtitle(gross : BOOLEAN; schrift : string80; titel : string20; farbe : BYTE);
@@ -147,25 +147,25 @@ BEGIN
   IF ende THEN index := kan;
 END;
 
-PROCEDURE kanalmenge.voreinstellung;
+PROCEDURE TChannelVolume.presetup;
 VAR
   i : BYTE;
 BEGIN
   FOR i := 1 TO kan DO k[i] := pred(i);
-  kn := kan;
+  channelnumber := kan;
 END;
 
-FUNCTION kanalmenge.ausgabe : string80;
+FUNCTION TChannelVolume.ausgabe : string80;
 VAR
   puffer : string80;
   i :      BYTE;
 BEGIN
   puffer := '';
-  FOR i := 1 TO kn DO puffer := puffer + wort(k[i]) + ' ';
+  FOR i := 1 TO channelnumber DO puffer := puffer + wort(k[i]) + ' ';
   ausgabe := puffer;
 END;
 
-PROCEDURE kanalmenge.lesen(enn : BYTE; farbe : BYTE);
+PROCEDURE TChannelVolume.read(enn : BYTE; farbe : BYTE);
 VAR
   i :          BYTE;
   puffer, ts : string80;
@@ -190,9 +190,9 @@ BEGIN
   Write(#13);
   clreol;
   puffer := readstring('Channels', ausgabe);
-  kn     := 0;
+  channelnumber     := 0;
   i      := 1;
-  WHILE (i <= length(puffer)) AND (kn <= maxchannelsandfilters) DO
+  WHILE (i <= length(puffer)) AND (channelnumber <= maxchannelsandfilters) DO
   BEGIN
     ts := '';
     WHILE NOT (puffer[i] IN ['0'..'9']) DO
@@ -210,8 +210,8 @@ BEGIN
     IF tk IN [0..kan + maxfilters - 1] THEN
       IF (tk < kan) OR (filterdrin(tk)) THEN
       BEGIN
-        Inc(kn);
-        k[kn] := tk;
+        Inc(channelnumber);
+        k[channelnumber] := tk;
       END
       ELSE
         fehler('Channel ' + wort(tk) + ' not defined.')
@@ -219,7 +219,7 @@ BEGIN
       fehler('Channel ' + wort(tk) + ' not existing.');
   END;
   dabei := [];
-  FOR i := 1 TO kn DO dabei := dabei + [k[i]];
+  FOR i := 1 TO channelnumber DO dabei := dabei + [k[i]];
 END;
 
 BEGIN

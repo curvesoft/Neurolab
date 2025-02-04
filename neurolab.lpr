@@ -360,7 +360,7 @@ VAR
       exit;
     END;
     k := max(i, 0);
-    oeffnen(aktfile);
+    openfile(aktfile);
     i := zwi(messw(readint('Start Time [ms]', 0)));
     clrscr;
     FOR j := i TO liste[aktfile].head.datalength - 1 DO
@@ -412,8 +412,8 @@ VAR
         exit;
       END;
       clrscr;
-      kanaele.lesen(5, farbe3);
-      IF NOT (kanaele.kn IN [1..32]) THEN exit;
+      kanaele.read(5, farbe3);
+      IF NOT (kanaele.channelnumber IN [1..32]) THEN exit;
       window(1, 22, 80, 25);
       clrscr;
       von    := messwext(readext('Start Time [ms]', extzeit(von), 1, 0));
@@ -460,8 +460,8 @@ VAR
         exit;
       END;
       clrscr;
-      kanaele.lesen(5, farbe3);
-      IF NOT (kanaele.kn IN [1..32]) THEN exit;
+      kanaele.read(5, farbe3);
+      IF NOT (kanaele.channelnumber IN [1..32]) THEN exit;
       window(1, 22, 80, 25);
       clrscr;
       writeln('Maximum Averaging Time: ', zeit(maxnumber) - 1, ' ms.');
@@ -540,8 +540,8 @@ VAR
       END;
       akttrind := chpuff;
       clrscr;
-      kanaele.lesen(5, farbe3);
-      IF NOT (kanaele.kn IN [1..32]) THEN exit;
+      kanaele.read(5, farbe3);
+      IF NOT (kanaele.channelnumber IN [1..32]) THEN exit;
       window(1, 22, 80, 25);
       clrscr;
       writeln('Maximum Averaging Time: ', zeit(maxnumber) - 1, ' ms.');
@@ -1144,7 +1144,7 @@ VAR
       IF idtest = id THEN
       BEGIN
         tlfiles.streamget(speicher);
-        kanaele.voreinstellung;
+        kanaele.presetup;
         nltrigg.streamget(speicher);
         tlfilter.streamget(speicher);
         IF speicher.status <> stok THEN

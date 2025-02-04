@@ -433,7 +433,7 @@ FUNCTION filterzeile(k : BYTE) : STRING;
 
 PROCEDURE einheitensetzen(frequenz : EXTENDED);
 
-PROCEDURE oeffne(Name : string80; VAR ko : headerdata);
+PROCEDURE openfileheader(Name : string80; VAR ko : headerdata);
 
 FUNCTION dat(posi : bigint64; k : BYTE) : sample;
 
@@ -1858,12 +1858,12 @@ BEGIN
     END;
 END;
 
-PROCEDURE oeffne(Name : string80; VAR ko : headerdata);
+PROCEDURE openfileheader(Name : string80; VAR ko : headerdata);
 VAR
   i :    LONGINT;
   hilf : filterzeiger;
 BEGIN
-  daff.oeffne(Name, ko);
+  daff.openfileheader(Name, ko);
   diffaktor := ko.frequency / fre / 2;
   FOR i := kan TO kan + maxfilters - 1 DO
   BEGIN

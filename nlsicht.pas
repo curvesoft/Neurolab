@@ -47,8 +47,8 @@ BEGIN
   IF i <> aktfile THEN anfang := 0;
   aktfile := i;
   clrscr;
-  kanaele.lesen(6, farbe2);
-  IF kanaele.kn = 0 THEN exit;
+  kanaele.read(6, farbe2);
+  IF kanaele.channelnumber = 0 THEN exit;
   sinvar := readext('Speed [mm/s]', abl, 3, 1);
   IF sinvar <= 0 THEN
   BEGIN

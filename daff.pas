@@ -234,7 +234,7 @@ VAR
 PROCEDURE kopflesen(Name : string80; VAR anfang : contextzeiger);
 PROCEDURE kopfzeigen(anfang : PTag; VAR hin : Text);
 PROCEDURE kopf(CONST Name : string80; VAR ko : headerdata);
-PROCEDURE oeffne(Name : string80; VAR ko : headerdata);
+PROCEDURE openfileheader(Name : string80; VAR ko : headerdata);
 PROCEDURE schliesse;
 PROCEDURE ausserbetrieb;
 
@@ -424,7 +424,7 @@ BEGIN
   IF anfang <> nil THEN dispose(anfang, done);
 END;
 
-PROCEDURE oeffne(Name : string80; VAR ko : headerdata);
+PROCEDURE openfileheader(Name : string80; VAR ko : headerdata);
 VAR
   i : INTEGER;
 BEGIN
@@ -435,7 +435,7 @@ BEGIN
   FOR i := 0 TO kan DO
   BEGIN
     koffs[i]  := ko.channels[i].offs;
-    kshift[i] := samplebit - ko.channels[i].bits + 1;
+    kshift[i] := samplebit - ko.channels[i].bits + 1;  // 25-12+1=14
   END;
   lesef := lesefliste[ko.datatype];
   IF zustand = aus THEN exit;

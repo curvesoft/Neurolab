@@ -52,7 +52,7 @@ TYPE
     PROCEDURE berechnen; VIRTUAL;
     PROCEDURE image; VIRTUAL;
     PROCEDURE plot(gr : BYTE); VIRTUAL;
-    CONSTRUCTOR construct(VAR kan : kanalmenge; anf, dau : typeextended; trl : CHAR;
+    CONSTRUCTOR construct(VAR kan : TChannelVolume; anf, dau : typeextended; trl : CHAR;
       trp : bigint64);
   END;
 
@@ -65,7 +65,7 @@ TYPE
     PROCEDURE berechnen; VIRTUAL;
     PROCEDURE image; VIRTUAL;
     PROCEDURE plot(gr : BYTE); VIRTUAL;
-    CONSTRUCTOR construct(VAR kan : kanalmenge; anf, dau : typeextended; trl : CHAR;
+    CONSTRUCTOR construct(VAR kan : TChannelVolume; anf, dau : typeextended; trl : CHAR;
       trp : bigint64; VAR weis : triggerweiser);
   END;
 
@@ -265,7 +265,7 @@ BEGIN
   um := 1 / gesamt;
   FOR nr := 1 TO filenr DO WITH tliste[ref]^.fil[nr] DO
     BEGIN
-      oeffnen(nr);
+      openfile(nr);
       FOR tpr := 1 TO automn DO
       BEGIN
         ywert := dat(zwi(autom^[tpr]), xkanal);
@@ -329,7 +329,7 @@ BEGIN
         Write(#13);
         clreol;
         Write('Averaging: ', liste[nr].Name, ', total trigger point no.:');
-        oeffnen(nr);
+        openfile(nr);
         FOR tp := 1 TO automn DO
         BEGIN
           FOR j := 0 TO maxchannelsandfilters DO IF j IN kanaele.dabei THEN FOR i := 0 TO rdauer DO
@@ -346,7 +346,7 @@ BEGIN
       END;
   FOR j := 0 TO maxchannelsandfilters DO IF j IN kanaele.dabei THEN
       FOR i := 0 TO rdauer DO mittel[j]^[i] := mittel[j]^[i] / tpgesamt;
-  WITH kanaele DO FOR j := 1 TO kn DO
+  WITH kanaele DO FOR j := 1 TO channelnumber DO
     BEGIN
       rauschen(mittel[k[j]]^, dauer, hoehe[j]);
       maxix[j] := 0;
@@ -372,7 +372,7 @@ BEGIN
     grafikmittel.image;
     setlinestyle(dottedln, 0, normwidth);
     settextjustify(righttext, toptext);
-    FOR j := 1 TO kn DO
+    FOR j := 1 TO channelnumber DO
     BEGIN
       outtextxy(getmaxx, y0[j] - breite + 1, 'Base=' + extwort(extspannung(hoehe[j], k[j]), 1, 2) +
         ' ' + belegungsliste[k[j]].einhwort);
@@ -406,11 +406,11 @@ BEGIN
     Write(plt, kleinschr, 'DI0,1;', plpa(rdauer, 0), 'CP-2,-2;',
       pllb('AVERAGE'), 'CP-7,-1;',
       pllb('b'), 'CP-1,-1;', pllb('m'), 'CP-1,-1;', pllb('a'));
-    FOR i := kn DOWNTO 1 DO
+    FOR i := channelnumber DOWNTO 1 DO
     BEGIN
       fleinheit := belegungsliste[k[i]];
       Inc(fleinheit.sekunde);
-      Write(plt, plpa(rdauer, fullsamplerange * (kn - i)), 'CP0,-3;',
+      Write(plt, plpa(rdauer, fullsamplerange * (channelnumber - i)), 'CP0,-3;',
         pllb(extwort(extspannung(hoehe[i], k[i]), 1, 2) + ' '),
         belegungsliste[k[i]].plot, 'CP;',
         pllb(extwort((maxi[i] - hoehe[i]) * belegungsliste[k[i]].faktor, 1, 2) + ' '),
@@ -421,7 +421,7 @@ BEGIN
   END;
 END;
 
-CONSTRUCTOR grafikaverage.construct(VAR kan : kanalmenge; anf, dau : typeextended; trl : CHAR;
+CONSTRUCTOR grafikaverage.construct(VAR kan : TChannelVolume; anf, dau : typeextended; trl : CHAR;
   trp : bigint64);
 BEGIN
   grafikmittel.construct(kan, anf, dau, trl, trp);
@@ -442,7 +442,7 @@ BEGIN
           Write(#13);
           clreol;
           Write('Averaging: ', liste[nr].Name, ', total trigger point no.:');
-          oeffnen(nr);
+          openfile(nr);
           FOR tp := 1 TO n DO
           BEGIN
             abst       := autom^[t^[tp] + 1] - autom^[t^[tp]];
@@ -463,7 +463,7 @@ BEGIN
     FOR j := 0 TO maxchannelsandfilters DO IF j IN kanaele.dabei THEN
         FOR i := 0 TO rdauer DO mittel[j]^[i] := mittel[j]^[i] / gesamt;
   END;
-  WITH kanaele DO FOR j := 1 TO kn DO
+  WITH kanaele DO FOR j := 1 TO channelnumber DO
     BEGIN
       rauschen(mittel[k[j]]^, dauer, hoehe[j]);
       maxix[j] := 0;
@@ -489,7 +489,7 @@ BEGIN
     grafikmittel.image;
     setlinestyle(dottedln, 0, normwidth);
     settextjustify(righttext, toptext);
-    FOR j := 1 TO kn DO
+    FOR j := 1 TO channelnumber DO
     BEGIN
       outtextxy(getmaxx, y0[j] - breite + 1, 'Base=' + extwort(extspannung(hoehe[j], k[j]), 1, 2) +
         ' ' + belegungsliste[k[j]].einhwort);
@@ -523,11 +523,11 @@ BEGIN
     Write(plt, kleinschr, 'DI0,1;', plpa(rdauer, 0), 'CP-2,-2;',
       pllb('PHASE DEPENDENT AVERAGE'), 'CP-23,-1;',
       pllb('b'), 'CP-1,-1;', pllb('m'), 'CP-1,-1;', pllb('a'));
-    FOR i := kn DOWNTO 1 DO
+    FOR i := channelnumber DOWNTO 1 DO
     BEGIN
       fleinheit := belegungsliste[k[i]];
       Inc(fleinheit.sekunde);
-      Write(plt, plpa(rdauer, fullsamplerange * (kn - i)), 'CP0,-3;',
+      Write(plt, plpa(rdauer, fullsamplerange * (channelnumber - i)), 'CP0,-3;',
         pllb(extwort(extspannung(hoehe[i], k[i]), 1, 2) + ' '),
         belegungsliste[k[i]].plot, 'CP;',
         pllb(extwort((maxi[i] - hoehe[i]) * belegungsliste[k[i]].faktor, 1, 2) + ' '),
@@ -538,7 +538,7 @@ BEGIN
   END;
 END;
 
-CONSTRUCTOR grafikphasenaverage.construct(VAR kan : kanalmenge; anf, dau : typeextended;
+CONSTRUCTOR grafikphasenaverage.construct(VAR kan : TChannelVolume; anf, dau : typeextended;
   trl : CHAR; trp : bigint64; VAR weis : triggerweiser);
 BEGIN
   triggweis := weis;

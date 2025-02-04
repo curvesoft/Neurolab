@@ -793,7 +793,7 @@ BEGIN
         mat.fn := trfile;
         verfol.beginn(trfile);
         IF abbruch THEN exit;
-        oeffnen(trfile);
+        openfile(trfile);
         IF bloecke THEN
         BEGIN
           wandert := block^;
@@ -853,7 +853,7 @@ for trfile:=1 to filenr do if trfile in dabei then
  with fil[trfile], liste[trfile] do begin
    mat.fn:=trfile;
    verfol.beginn(trfile); if abbruch then exit;
-(*   oeffnen(trfile); *)
+(*   openfile(trfile); *)
    pwandert:=selbst^;
    while (pwandert^.next<>nil) and not verfol.aufhoeren do begin
       verfol.weiter(pwandert^.bei);
@@ -985,7 +985,7 @@ for trfile:=1 to filenr do if trfile in dabei then
  with fil[trfile], liste[trfile] do begin
    mat.fn:=trfile;
    verfol.beginn(trfile); if abbruch then exit;
-   oeffnen(trfile);
+   openfile(trfile);
    hierbei:=anfa;
    while (laenge>=hierbei) and not verfol.aufhoeren do begin
       verfol.weiter(hierbei);
@@ -2275,7 +2275,7 @@ VAR
   VAR
     ausgabe :  Text;
     fn, i, j : midint32;
-    ykanaele : kanalmenge;
+    ykanaele : TChannelVolume;
     zkn :      INTEGER;
   BEGIN
     showtitle(False, 'Export Trigger Data', 'Info', farbe3);
@@ -2295,13 +2295,13 @@ VAR
       IF upcase(readchar('Overwrite? (Y/N)', 'N')) <> 'Y' THEN exit;
     window(1, 3, 80, zeilmax);
     clrscr;
-    IF tliste[ta]^.tr = maxchannelsandfilters THEN ykanaele.kn := 0
+    IF tliste[ta]^.tr = maxchannelsandfilters THEN ykanaele.channelnumber := 0
     ELSE
     BEGIN
-      ykanaele.kn   := 1;
+      ykanaele.channelnumber   := 1;
       ykanaele.k[1] := tliste[ta]^.tr;
     END;
-    ykanaele.lesen(8, farbe3);
+    ykanaele.read(8, farbe3);
     Assign(ausgabe, filename);
     rewrite(ausgabe);
     WITH tliste[ta]^ DO
@@ -2313,7 +2313,7 @@ VAR
       writeln(ausgabe, ' "');
       FOR fn := 1 TO filenr DO WITH fil[fn] DO
         BEGIN
-          oeffnen(fn);
+          openfile(fn);
           IF automda THEN FOR i := 1 TO automn DO
             BEGIN
               Write(ausgabe, fn : 12, extzeit(autom^[i]) : 20 : 3);

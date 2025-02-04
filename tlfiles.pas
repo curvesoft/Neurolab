@@ -81,7 +81,7 @@ VAR
   offennr : BYTE;
   korr :    EXTENDED;
 
-PROCEDURE oeffnen(nr : BYTE);
+PROCEDURE openfile(nr : BYTE);
 
 FUNCTION zwi(stelle : typeextended) : bigint64;
 
@@ -126,12 +126,12 @@ CONST
 VAR
   i : BYTE;
 
-PROCEDURE oeffnen(nr : BYTE);
+PROCEDURE openfile(nr : BYTE);
 BEGIN
   offennr := nr;
   WITH liste[nr] DO
   BEGIN
-    oeffne(Name, head);
+    openfileheader(Name, head);
     korr := head.frequency / fre;
   END;
 END;

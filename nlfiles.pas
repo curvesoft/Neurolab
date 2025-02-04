@@ -44,7 +44,7 @@ BEGIN
     IF kan > 0 THEN
     BEGIN
       neukan(kan);
-      kanaele.voreinstellung;
+      kanaele.presetup;
     END;
   END
   ELSE
@@ -123,7 +123,7 @@ BEGIN
     BEGIN
       kan := channelnumber;
       neukan(kan);
-      kanaele.voreinstellung;
+      kanaele.presetup;
     END;
     IF fre = 0 THEN fre := frequency
     ELSE IF frequency > 1.1 * fre THEN
@@ -296,13 +296,13 @@ BEGIN
   ko.protocol := readstring('Protocol', liste[1].head.protocol + ' (sel.)');
   showtitle(False, 'Selected Data File', 'Info', farbe3);
   clrscr;
-  kanaele.lesen(6, farbe3);
-  IF kanaele.kn = 0 THEN exit;
+  kanaele.read(6, farbe3);
+  IF kanaele.channelnumber = 0 THEN exit;
   WITH ko DO
   BEGIN
     producer := 'NEUROLAB';
     frequency      := fre;
-    channelnumber      := kanaele.kn;
+    channelnumber      := kanaele.channelnumber;
     i         := 0;
     FOR j := 0 TO maxchannelsandfilters DO IF j IN kanaele.dabei THEN
       BEGIN
@@ -374,11 +374,11 @@ BEGIN
         FOR nr := 1 TO filenr DO WITH liste[nr] DO
           BEGIN
             wandert := block^;
-            oeffnen(nr);
+            openfile(nr);
             WHILE wandert^.Next <> nil DO
             BEGIN
               FOR tzaehler := trunc(wandert^.frompos + 1) TO trunc(wandert^.endpos) DO
-                FOR j := 1 TO kanaele.kn DO seqschreibeint16(dat(zwi(tzaehler), kanaele.k[j]));
+                FOR j := 1 TO kanaele.channelnumber DO seqschreibeint16(dat(zwi(tzaehler), kanaele.k[j]));
               wandert := wandert^.Next;
             END;
             schliesse;
@@ -405,11 +405,11 @@ BEGIN
         FOR nr := 1 TO filenr DO WITH liste[nr] DO
           BEGIN
             wandert := block^;
-            oeffnen(nr);
+            openfile(nr);
             WHILE wandert^.Next <> nil DO
             BEGIN
               FOR tzaehler := trunc(wandert^.frompos + 1) TO trunc(wandert^.endpos) DO
-                FOR j := 1 TO kanaele.kn DO seqschreibe(dat(zwi(tzaehler), kanaele.k[j]));
+                FOR j := 1 TO kanaele.channelnumber DO seqschreibe(dat(zwi(tzaehler), kanaele.k[j]));
               wandert := wandert^.Next;
             END;
             schliesse;

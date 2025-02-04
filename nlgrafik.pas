@@ -68,7 +68,7 @@ TYPE
 
   TChannelGraphic = OBJECT(TBasicGraphic)
     anfang, dauer :     typeextended;
-    kanaele :           kanalmenge;
+    kanaele :           TChannelVolume;
     stauchung, faktor : EXTENDED;
     breite, oben :      WORD;
     y0 :                yliste;
@@ -100,7 +100,7 @@ TYPE
     PROCEDURE image; VIRTUAL;
     PROCEDURE linie(x1, x2 : bigint64);
     PROCEDURE plot(gr : BYTE); VIRTUAL;
-    CONSTRUCTOR construct(afi : BYTE; VAR kane : kanalmenge; anf : typeextended; abl : SINGLE; men : menue);
+    CONSTRUCTOR construct(afi : BYTE; VAR kane : TChannelVolume; anf : typeextended; abl : SINGLE; men : menue);
   END;
 
   grafiksuperposition = OBJECT(TChannelGraphic) {Superpositionsgrafik}
@@ -108,7 +108,7 @@ TYPE
     beginn, ende : typeextended;
     PROCEDURE image; VIRTUAL;
     PROCEDURE plot(gr : BYTE); VIRTUAL;
-    CONSTRUCTOR construct(VAR kan : kanalmenge; von, bis : typeextended; trl : CHAR);
+    CONSTRUCTOR construct(VAR kan : TChannelVolume; von, bis : typeextended; trl : CHAR);
   END;
 
   grafikmittel = OBJECT(grafikkurve) {Grafik vom Averagen}
@@ -120,7 +120,7 @@ TYPE
     PROCEDURE image; VIRTUAL;
     PROCEDURE plot(gr : BYTE); VIRTUAL;
     PROCEDURE filewrite(VAR outfile : Text); VIRTUAL;
-    PROCEDURE construct(VAR kan : kanalmenge; anf, dau : typeextended; trl : CHAR; trp : bigint64);
+    PROCEDURE construct(VAR kan : TChannelVolume; anf, dau : typeextended; trl : CHAR; trp : bigint64);
   END;
 
   grafikintervallroh = OBJECT(TBasicGraphic) {Intervalldaten-Grafik}
@@ -449,7 +449,7 @@ BEGIN
       IF NOT (belegungsliste[x].gepunktet OR belegungsliste[y].gepunktet) THEN
       BEGIN
         wandert := block^;
-        oeffnen(nr);
+        openfile(nr);
         WHILE wandert^.Next <> nil DO
         BEGIN
           IF znr < orand THEN
@@ -475,7 +475,7 @@ BEGIN
         IF belegungsliste[x].gepunktet THEN xyl := x
         ELSE
           xyl := y;
-        oeffnen(nr);
+        openfile(nr);
         td := tliste[belegungsliste[xyl].gepunktettl]^.fil[nr];
         FOR tzaehler := 1 TO td.automn DO
         BEGIN
@@ -509,7 +509,7 @@ BEGIN
       IF NOT (belegungsliste[x].gepunktet OR belegungsliste[y].gepunktet) THEN
       BEGIN
         wandert := block^;
-        oeffnen(nr);
+        openfile(nr);
         WHILE wandert^.Next <> nil DO
         BEGIN
           Write(plt, plpa(kon(dat(zwi(trunc(wandert^.frompos + 1)), x), x), kon(
@@ -527,7 +527,7 @@ BEGIN
         IF belegungsliste[x].gepunktet THEN xyl := x
         ELSE
           xyl := y;
-        oeffnen(nr);
+        openfile(nr);
         td := tliste[belegungsliste[xyl].gepunktettl]^.fil[nr];
         FOR tzaehler := 1 TO td.automn DO
           Write(plt, plpa(kon(dat(zwi(td.autom^[tzaehler]), x), x), kon(dat(zwi(td.autom^[tzaehler]), y), y)), plkr);
@@ -590,7 +590,7 @@ BEGIN
   FOR nr := 1 TO filenr DO WITH liste[nr] DO
     BEGIN
       wandert := block^;
-      oeffnen(nr);
+      openfile(nr);
       WHILE wandert^.Next <> nil DO
       BEGIN
         FOR tzaehler := trunc(wandert^.frompos + 1) TO trunc(wandert^.endpos) DO
@@ -762,15 +762,15 @@ BEGIN
     setwritemode(copyput);
     setlinestyle(solidln, 0, normwidth);
     stauchung := dauer / (maxx - lrand);
-    breite    := (maxy - 40) DIV (2 * kn);
-    oben      := maxy - 2 * kn * breite - 10;
+    breite    := (maxy - 40) DIV (2 * channelnumber);
+    oben      := maxy - 2 * channelnumber * breite - 10;
     faktor    := -breite / maxsample;
     settextjustify(righttext, centertext);
     outtextxy(maxx, maxy - 4, 't [ms]');
     line(lrand, oben, lrand, maxy - 10);
     line(lrand, maxy - 10, maxx, maxy - 10);
     buch := breite DIV 4;
-    FOR i := 1 TO kn DO WITH belegungsliste[k[i]] DO
+    FOR i := 1 TO channelnumber DO WITH belegungsliste[k[i]] DO
       BEGIN
         y0[i] := round(oben + (2 * (i - 1) + 1) * breite);
         setlinestyle(solidln, 0, normwidth);
@@ -782,7 +782,7 @@ BEGIN
         setlinestyle(dashedln, 0, normwidth);
         moveto(lrand, y0[i] - breite);
         linerel(maxx - 10, 0);
-        IF kn <= 10 THEN
+        IF channelnumber <= 10 THEN
         BEGIN
           settextstyle(defaultfont, vertdir, 1);
           settextjustify(centertext, centertext);
@@ -794,7 +794,7 @@ BEGIN
           outtextxy(lrand - 1, y0[i] - breite + 1, wort(spannung(rekon(maxsample, k[i]), k[i])));
           settextjustify(righttext, bottomtext);
           outtextxy(lrand - 1, y0[i] + breite, wort(spannung(rekon(minsample, k[i]), k[i])));
-          IF kn <= 6 THEN
+          IF channelnumber <= 6 THEN
           BEGIN
             settextjustify(righttext, centertext);
             outtextxy(lrand - 1, y0[i], wort(spannung(rekon(0, k[i]), k[i])));
@@ -832,34 +832,34 @@ BEGIN
     rdauer := round(dauer);
     lrand  := -rdauer / 12;
     WITH p[gr] DO Write(plt, plip(p1x, p1y, p2x, p2y));
-    Write(plt, relativschr, plsc(0, rdauer, 0, fullsamplerange * kn));
-    FOR i := 1 TO kn DO
+    Write(plt, relativschr, plsc(0, rdauer, 0, fullsamplerange * channelnumber));
+    FOR i := 1 TO channelnumber DO
     BEGIN
-      Write(plt, plpa(lrand, fullsamplerange * (kn - i + 1)), 'CP0,-0.75;',
+      Write(plt, plpa(lrand, fullsamplerange * (channelnumber - i + 1)), 'CP0,-0.75;',
         pllb(buendig(wort(spannung(rekon(maxsample, k[i]), k[i])))),
         'CP;CP0.5,-0.25;', belegungsliste[k[i]].plot);
-      Write(plt, plpa(lrand, fullsamplerange * (kn - i) + fullsamplerange / 2), 'CP0,-0.25;',
+      Write(plt, plpa(lrand, fullsamplerange * (channelnumber - i) + fullsamplerange / 2), 'CP0,-0.25;',
         pllb(buendig(wort(spannung(rekon(0, k[i]), k[i])))),
-        plpa(lrand, fullsamplerange * (kn - i)), 'CP0,0.25;',
+        plpa(lrand, fullsamplerange * (channelnumber - i)), 'CP0,0.25;',
         pllb(buendig(wort(spannung(rekon(minsample, k[i]), k[i])))));
     END;
     Write(plt, 'TL0,1.3;', plpa(0, 0), plyt);
-    FOR i := kn DOWNTO 1 DO
+    FOR i := channelnumber DOWNTO 1 DO
     BEGIN
       Write(plt, 'TL0,0.6;');
-      FOR j := 1 TO 3 DO Write(plt, plpa(0, fullsamplerange * (kn - i) + j * fullsamplerange / 4), plyt);
-      Write(plt, 'TL0,1.3;', plpa(0, fullsamplerange * (kn - i + 1)), plyt);
+      FOR j := 1 TO 3 DO Write(plt, plpa(0, fullsamplerange * (channelnumber - i) + j * fullsamplerange / 4), plyt);
+      Write(plt, 'TL0,1.3;', plpa(0, fullsamplerange * (channelnumber - i + 1)), plyt);
     END;
     Write(plt, kleinschr, 'CP0,3;', pllb(filename), 'CP;', pllb(fileext), 'CP;',
       pllb(filecomment), relativschr);
-    Write(plt, plpu, plpa(0, fullsamplerange * kn), plpd, plpa(0, 0), plpa(rdauer, 0), plpu,
+    Write(plt, plpu, plpa(0, fullsamplerange * channelnumber), plpd, plpa(0, 0), plpa(rdauer, 0), plpu,
       'CP-6,-1;', pllb('t [ms]'), 'TL-1,0;');
     skala(anfang, rdauer, anzahl, werte, zeitskala);
     FOR i := anzahl DOWNTO 1 DO
       Write(plt, plpa((werte[i] - anfang), 0), plxt, 'CP-.33,-1;',
         pllb(wort(zeit(werte[i]))));
     Write(plt, 'DI0,1;');
-    FOR i := kn DOWNTO 1 DO Write(plt, plpu, plpa(lrand, fullsamplerange * (kn - i)),
+    FOR i := channelnumber DOWNTO 1 DO Write(plt, plpu, plpa(lrand, fullsamplerange * (channelnumber - i)),
         'CP0,0.5;', pllb(schriftliste[k[i]]));
   END;
 END;
@@ -881,10 +881,10 @@ BEGIN
     setwritemode(copyput);
     setlinestyle(solidln, 0, normwidth);
     setcolor(getmaxcolor);
-    FOR i := 1 TO kn DO
+    FOR i := 1 TO channelnumber DO
       y[i] := y0[i] + round(kon(daten(0, k[i]), k[i]) * faktor);
     FOR x := lrand + 1 TO getmaxx - 1 DO
-      FOR i := 1 TO kn DO
+      FOR i := 1 TO channelnumber DO
       BEGIN
         yn := y0[i] + round(kon(daten((x - lrand - 1) * stauchung, k[i]), k[i]) * faktor);
         line(x, y[i], x + 1, yn);
@@ -900,18 +900,18 @@ VAR
 BEGIN
   TChannelGraphic.plot(gr);
   rdauer := round(dauer);
-  Write(plt, kleinschr, 'DI1,0;', plpa(rdauer, fullsamplerange * kanaele.kn), 'CP-6,2;');
+  Write(plt, kleinschr, 'DI1,0;', plpa(rdauer, fullsamplerange * kanaele.channelnumber), 'CP-6,2;');
   Write(plt, pllb('Start: ' + extwort(extzeit(anfang), 1, 3) + ' ms'), 'CP;CP-6,0;');
   Write(plt, pllb('End  : ' + extwort(extzeit(anfang + dauer), 1, 3) + ' ms'));
   WITH kanaele DO
   BEGIN
-    FOR i := kn DOWNTO 1 DO
+    FOR i := channelnumber DOWNTO 1 DO
     BEGIN
-      Write(plt, plpa(0, fullsamplerange * (kn - i + 0.5) + kon(daten(0, k[i]), k[i])),
+      Write(plt, plpa(0, fullsamplerange * (channelnumber - i + 0.5) + kon(daten(0, k[i]), k[i])),
         plpd);
       FOR j := 0 TO rdauer DO
       BEGIN
-        Write(plt, plpa(j, fullsamplerange * (kn - i + 0.5) + kon(daten(j, k[i]), k[i])));
+        Write(plt, plpa(j, fullsamplerange * (channelnumber - i + 0.5) + kon(daten(j, k[i]), k[i])));
         IF keypressed AND (readkey = #27) THEN
         BEGIN
           abortion := True;
@@ -950,10 +950,10 @@ BEGIN
     setlinestyle(solidln, 0, normwidth);
     setcolor(getmaxcolor);
     gepunktetmenge := [];
-    FOR i := 1 TO kn DO IF belegungsliste[k[i]].gepunktet THEN gepunktetmenge := gepunktetmenge + [k[i]];
+    FOR i := 1 TO channelnumber DO IF belegungsliste[k[i]].gepunktet THEN gepunktetmenge := gepunktetmenge + [k[i]];
     FOR l := 1 TO filenr DO WITH tliste[tl]^.fil[l] DO
       BEGIN
-        oeffnen(l);
+        openfile(l);
         FOR j := 1 TO automn DO
         BEGIN
           IF keypressed THEN IF readkey = #27 THEN
@@ -962,16 +962,16 @@ BEGIN
               exit;
             END;
           zw := autom^[j] + beginn;
-          FOR i := 1 TO kn DO IF NOT (k[i] IN gepunktetmenge) THEN
+          FOR i := 1 TO channelnumber DO IF NOT (k[i] IN gepunktetmenge) THEN
               y[i] := y0[i] + round(kon(dat(zwi(zw), k[i]), k[i]) * faktor);
           FOR x := lrand + 2 TO maxx DO
-            FOR i := 1 TO kn DO IF NOT (k[i] IN gepunktetmenge) THEN
+            FOR i := 1 TO channelnumber DO IF NOT (k[i] IN gepunktetmenge) THEN
               BEGIN
                 yn := y0[i] + round(kon(dat(zwi((x - lrand - 1) * stauchung + zw), k[i]), k[i]) * faktor);
                 line(x - 1, y[i], x, yn);
                 y[i] := yn;
               END;
-          FOR i := 1 TO kn DO IF k[i] IN gepunktetmenge THEN
+          FOR i := 1 TO channelnumber DO IF k[i] IN gepunktetmenge THEN
               WITH tliste[belegungsliste[k[i]].gepunktettl]^.fil[l] DO
               BEGIN
                 such(0, automn + 1, zw, dum, tpol);
@@ -1004,24 +1004,24 @@ VAR
 BEGIN
   TChannelGraphic.plot(gr);
   rdauer := round(dauer);
-  Write(plt, kleinschr, 'DI1,0;', plpa(rdauer, fullsamplerange * kanaele.kn), 'CP-6,2;');
+  Write(plt, kleinschr, 'DI1,0;', plpa(rdauer, fullsamplerange * kanaele.channelnumber), 'CP-6,2;');
   Write(plt, pllb('Start: ' + extwort(extzeit(anfang), 1, 3) + ' ms'), 'CP;CP-6,0;');
   Write(plt, pllb('End  : ' + extwort(extzeit(anfang + dauer), 1, 3) + ' ms'));
   WITH kanaele DO
   BEGIN
     FOR l := 1 TO filenr DO WITH tliste[tl]^.fil[l] DO
       BEGIN
-        oeffnen(l);
+        openfile(l);
         FOR m := 1 TO automn DO
         BEGIN
           zw := autom^[m] + beginn;
-          FOR i := kn DOWNTO 1 DO IF NOT belegungsliste[k[i]].gepunktet THEN
+          FOR i := channelnumber DOWNTO 1 DO IF NOT belegungsliste[k[i]].gepunktet THEN
             BEGIN
-              Write(plt, plpa(0, fullsamplerange * (kn - i + 0.5) + kon(dat(zwi(zw), k[i]), k[i])),
+              Write(plt, plpa(0, fullsamplerange * (channelnumber - i + 0.5) + kon(dat(zwi(zw), k[i]), k[i])),
                 plpd);
               FOR j := 1 TO rdauer DO
               BEGIN
-                Write(plt, plpa(j, fullsamplerange * (kn - i + 0.5) + kon(dat(zwi(zw + j), k[i]), k[i])));
+                Write(plt, plpa(j, fullsamplerange * (channelnumber - i + 0.5) + kon(dat(zwi(zw + j), k[i]), k[i])));
                 IF keypressed AND (readkey = #27) THEN
                 BEGIN
                   abortion := True;
@@ -1036,12 +1036,12 @@ BEGIN
                 such(0, automn + 1, zw, dum, tpol);
                 such(dum, automn + 1, zw + dauer, tpor, dum);
                 FOR tpo := tpol TO tpor DO
-                  Write(plt, plpa(autom^[tpo] - zw, fullsamplerange * (kn - i + 0.5) + kon(
+                  Write(plt, plpa(autom^[tpo] - zw, fullsamplerange * (channelnumber - i + 0.5) + kon(
                     dat(zwi(autom^[tpo]), k[i]), k[i])), plkr);
               END;
         END;
       END;
-    Write(plt, kleinschr, 'DI1,0;', plpa(rdauer, fullsamplerange * kanaele.kn), 'CP-6,4;');
+    Write(plt, kleinschr, 'DI1,0;', plpa(rdauer, fullsamplerange * kanaele.channelnumber), 'CP-6,4;');
     Write(plt, pllb('Files: ' + wort(filenumbers)), 'CP;CP-6,0;');
     Write(plt, pllb('T.-P.: ' + wort(tliste[tl]^.triggsum)));
     Write(plt, kleinschr, 'DI0,1;', plpa(rdauer, 0), 'CP-2,-2;',
@@ -1050,7 +1050,7 @@ BEGIN
   END;
 END;
 
-CONSTRUCTOR grafiksuperposition.construct(VAR kan : kanalmenge; von, bis : typeextended; trl : CHAR);
+CONSTRUCTOR grafiksuperposition.construct(VAR kan : TChannelVolume; von, bis : typeextended; trl : CHAR);
 BEGIN
   kanaele := kan;
   tl      := trl;
@@ -1110,17 +1110,17 @@ BEGIN
     setlinestyle(solidln, 0, normwidth);
     setcolor(getmaxcolor);
     gepunktetmenge := [];
-    FOR i := 1 TO kn DO IF belegungsliste[k[i]].gepunktet THEN gepunktetmenge := gepunktetmenge + [k[i]]
+    FOR i := 1 TO channelnumber DO IF belegungsliste[k[i]].gepunktet THEN gepunktetmenge := gepunktetmenge + [k[i]]
       ELSE
         y[i] := y0[i] + round(kon(dat(zwi(datanf), k[i]), k[i]) * faktor);
     FOR x := lrand + 1 TO maxx - 1 DO
-      FOR i := 1 TO kn DO IF NOT (k[i] IN gepunktetmenge) THEN
+      FOR i := 1 TO channelnumber DO IF NOT (k[i] IN gepunktetmenge) THEN
         BEGIN
           yn := y0[i] + round(kon(dat(zwi(xstelle(x)), k[i]), k[i]) * faktor);
           line(x, y[i], x + 1, yn);
           y[i] := yn;
         END;
-    FOR i := 1 TO kn DO IF k[i] IN gepunktetmenge THEN
+    FOR i := 1 TO channelnumber DO IF k[i] IN gepunktetmenge THEN
         WITH tliste[belegungsliste[k[i]].gepunktettl]^.fil[aktfile] DO
         BEGIN
           such(0, automn + 1, anfang, dum, tpol);
@@ -1194,19 +1194,19 @@ VAR
 BEGIN
   TChannelGraphic.plot(gr);
   rdauer := round(dauer);
-  Write(plt, kleinschr, 'DI1,0;', plpa(rdauer, fullsamplerange * kanaele.kn), 'CP-6,3;');
+  Write(plt, kleinschr, 'DI1,0;', plpa(rdauer, fullsamplerange * kanaele.channelnumber), 'CP-6,3;');
   Write(plt, pllb('Start: ' + extwort(extzeit(anfang), 1, 3) + ' ms'), 'CP;CP-6,0;');
   {write(plt,pllb('End  : '+extwort(extzeit(anfang+dauer),1,3)+' ms'));}
   Write(plt, pllb('Speed on Screen:'), 'CP;CP-6,0;', pllb(extwort(ablenkung, 4, 2) + ' mm/s'));
   WITH kanaele DO
   BEGIN
-    FOR i := kn DOWNTO 1 DO IF NOT belegungsliste[k[i]].gepunktet THEN
+    FOR i := channelnumber DOWNTO 1 DO IF NOT belegungsliste[k[i]].gepunktet THEN
       BEGIN
-        Write(plt, plpa(0, fullsamplerange * (kn - i + 0.5) + kon(dat(zwi(datanf), k[i]), k[i])),
+        Write(plt, plpa(0, fullsamplerange * (channelnumber - i + 0.5) + kon(dat(zwi(datanf), k[i]), k[i])),
           plpd);
         FOR j := 0 TO rdauer DO
         BEGIN
-          Write(plt, plpa(j, fullsamplerange * (kn - i + 0.5) + kon(dat(zwi(datanf + j), k[i]), k[i])));
+          Write(plt, plpa(j, fullsamplerange * (channelnumber - i + 0.5) + kon(dat(zwi(datanf + j), k[i]), k[i])));
           IF keypressed AND (readkey = #27) THEN
           BEGIN
             abortion := True;
@@ -1221,13 +1221,13 @@ BEGIN
           such(0, automn + 1, anfang, dum, tpol);
           such(dum, automn + 1, anfang + dauer, tpor, dum);
           FOR tpo := tpol TO tpor DO
-            Write(plt, plpa(autom^[tpo] - anfang, fullsamplerange * (kn - i + 0.5) +
+            Write(plt, plpa(autom^[tpo] - anfang, fullsamplerange * (channelnumber - i + 0.5) +
               kon(dat(zwi(autom^[tpo]), k[i]), k[i])), plkr);
         END;
   END;
 END;
 
-CONSTRUCTOR TChannelDataGraphic.construct(afi : BYTE; VAR kane : kanalmenge; anf : typeextended; abl : SINGLE; men : menue);
+CONSTRUCTOR TChannelDataGraphic.construct(afi : BYTE; VAR kane : TChannelVolume; anf : typeextended; abl : SINGLE; men : menue);
 CONST
   buchbr = 80;
   lupe   = 4;
@@ -1240,13 +1240,13 @@ VAR
   i, kannr : BYTE;
   extvar :   EXTENDED;
 
-  PROCEDURE schritt(VAR strich : bigint64; auf : bigint64);
+  PROCEDURE drawvline(VAR x : bigint64; onto : bigint64);
   BEGIN
     setlinestyle(dashedln, 0, normwidth);
     setcolor(min(strichfarbe, getmaxcolor));
-    line(strich, oben, strich, getmaxy - 11);
-    strich := auf;
-    IF (strich >= 0) AND (getmaxx >= strich) THEN line(strich, oben, strich, getmaxy - 11);
+    line(x, oben, x, getmaxy - 11);
+    x := onto;
+    IF (x >= 0) AND (getmaxx >= x) THEN line(x, oben, x, getmaxy - 11);
     setcolor(getmaxcolor);
   END;
 
@@ -1257,7 +1257,7 @@ BEGIN
   aktfile   := afi;
   filename  := liste[aktfile].Name;
   fileext   := liste[aktfile].head.protocol;
-  oeffnen(aktfile);
+  openfile(aktfile);
   kannr := 1;
   dauer := fre / ablenkung * 228;
   opengraph;
@@ -1308,7 +1308,7 @@ BEGIN
       CASE readkey OF
         #0 : CASE readkey OF
             {Hoch}     #72 : IF kannr > 1 THEN Dec(kannr);
-            {Runter}   #80 : IF kannr < kanaele.kn THEN Inc(kannr);
+            {Runter}   #80 : IF kannr < kanaele.channelnumber THEN Inc(kannr);
             {PgUp}     #73 : BEGIN
               anfang := mine(anfang + dauer, length);
               image;
@@ -1337,10 +1337,10 @@ BEGIN
               anfang    := maxe(0, strichstelle - dauer / 2);
               image;
             END;
-            {Ctrl Rech}#116 : schritt(strich, min(strich + 1, getmaxx));
-            {Ctrl Link}#115 : schritt(strich, max(lrand + 1, strich - 1));
-            {Rech}     #77 : schritt(strich, min(strich + 10, getmaxx));
-            {Link}     #75 : schritt(strich, max(lrand + 1, strich - 10));
+            {Ctrl Rech}#116 : drawvline(strich, min(strich + 1, getmaxx));
+            {Ctrl Link}#115 : drawvline(strich, max(lrand + 1, strich - 1));
+            {Rech}     #77 : drawvline(strich, min(strich + 10, getmaxx));
+            {Link}     #75 : drawvline(strich, max(lrand + 1, strich - 10));
             {Ctrl F3}  #96 : BEGIN
               strich1da := NOT strich1da;
               setlinestyle(dashedln, 0, normwidth);
@@ -1350,8 +1350,8 @@ BEGIN
             END;
             {F3}       #61 : IF strich1da THEN
               BEGIN
-                schritt(strich1, strich);
-                schritt(strich, strich + 1);
+                drawvline(strich1, strich);
+                drawvline(strich, strich + 1);
               END;
             {Ctrl Home}#119 : BEGIN
               anfang := 0;
@@ -1361,8 +1361,8 @@ BEGIN
               anfang := length - dauer;
               image;
             END;
-            {Home}     #71 : schritt(strich, lrand + 1);
-            {End}      #79 : schritt(strich, getmaxx);
+            {Home}     #71 : drawvline(strich, lrand + 1);
+            {End}      #79 : drawvline(strich, getmaxx);
             {F4}       #62 : IF status = bleibt THEN
               BEGIN
                 closegraph;
@@ -1481,14 +1481,14 @@ BEGIN
           END;
         'P' : plotstart;
         'B' : BEGIN
-          schritt(strich, strich - 1);
+          drawvline(strich, strich - 1);
           strichstelle := xstelle(strich);
           wandert      := block^;
-          IF wandert^.frompos > strichstelle THEN schritt(strich, stellex(0))
+          IF wandert^.frompos > strichstelle THEN drawvline(strich, stellex(0))
           ELSE
           BEGIN
             WHILE wandert^.Next^.frompos < strichstelle DO wandert := wandert^.Next;
-            schritt(strich, stellex(wandert^.frompos));
+            drawvline(strich, stellex(wandert^.frompos));
           END;
           strichstelle := xstelle(strich);
           IF anfang >= strichstelle THEN
@@ -1498,13 +1498,13 @@ BEGIN
           END;
         END;
         'F' : BEGIN
-          schritt(strich, strich + 1);
+          drawvline(strich, strich + 1);
           strichstelle := xstelle(strich);
           wandert      := block^;
           WHILE wandert^.frompos < strichstelle DO wandert := wandert^.Next;
-          IF wandert^.Next <> nil THEN schritt(strich, stellex(wandert^.frompos))
+          IF wandert^.Next <> nil THEN drawvline(strich, stellex(wandert^.frompos))
           ELSE
-            schritt(strich, stellex(length) - 1);
+            drawvline(strich, stellex(length) - 1);
           strichstelle := xstelle(strich);
           IF strichstelle >= anfang + dauer THEN
           BEGIN
@@ -1537,7 +1537,7 @@ END;
 
 { grafikmittel }
 
-PROCEDURE grafikmittel.construct(VAR kan : kanalmenge; anf, dau : typeextended; trl : CHAR; trp : bigint64);
+PROCEDURE grafikmittel.construct(VAR kan : TChannelVolume; anf, dau : typeextended; trl : CHAR; trp : bigint64);
 VAR
   i : LONGINT;
 BEGIN
@@ -1576,7 +1576,7 @@ PROCEDURE grafikmittel.plot(gr : BYTE);
 BEGIN
   grafikkurve.plot(gr);
   IF abortion THEN exit;
-  Write(plt, kleinschr, 'DI1,0;', plpa(rdauer, fullsamplerange * kanaele.kn), 'CP-6,4;');
+  Write(plt, kleinschr, 'DI1,0;', plpa(rdauer, fullsamplerange * kanaele.channelnumber), 'CP-6,4;');
   Write(plt, pllb('Files: ' + wort(filenumbers)), 'CP;CP-6,0;');
   Write(plt, pllb('T.-P.: ' + wort(tpgesamt)));
 END;
