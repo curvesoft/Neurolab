@@ -1,7 +1,7 @@
-{ Borland-Pascal 7.0 / FPC 2.4 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
 {$ifdef fpc} {$mode TP} {$endif}
 
-unit  tlfilter;
+UNIT  tlfilter;
 
 {$IFDEF MSDOS}
 {$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X-}
@@ -9,1683 +9,1974 @@ unit  tlfilter;
 {$A+,B-,E+,F-,G+,I-,N+,P+,T+,V+,X-}
 {$ENDIF}
 
-interface
+INTERFACE
 
-uses  objects, plotter, bequem, daff, wavpcm, tulab42;
+USES  objects, plotter, bequem, daff, wavpcm, tulab42, SysUtils;
 
-const filtermax=16;
-      maxkanal=maxkan+filtermax;
+CONST
+  maxfilters            = 16;
+  maxchannelsandfilters = maxchannels + maxfilters;
 
-      genau=4; weite=2000;
+  genau = 4;
+  weite = 2000;
 
-      spikemax=300;
+  spikemax = 300;
 
-type  { Einheiten der Y-Achsen }
-      einheitstring=string[7];
-      einheittyp=object
-         faktor:extended; vor:string[1]; anfang:string[7]; sekunde:integer;
-         procedure kopie(var ein:einheittyp);
-         function einhwort:einheitstring;
-         function plot:string80;
-         procedure handlich;
-         procedure schwierig;
-         end;
+TYPE  { Einheiten der Y-Achsen }
+  unitstring = STRING[7];
 
-      { Rohform der Einheiten der ungefilterten Daten }
-      grundtyp=object (einheittyp)
-         gain, multi : extended;
-         procedure setz (m:extended; anf:einheitstring);
-         end;
-      grundlistetyp=packed array[0..maxkan-1] of grundtyp;
+  TUnitType = OBJECT
+    factor : EXTENDED;
+    pre :    STRING[1];
+    start :  STRING[7];
+    second : INTEGER;
+    PROCEDURE clone(VAR atype : TUnitType);
+    FUNCTION getunit : unitstring;
+    FUNCTION plot : string80;   //plotter draw
+    PROCEDURE handlich;
+    PROCEDURE schwierig;
+  END;
 
-      { Endform der Einheiten der gefilterten Daten }
-      belegung=object (einheittyp)
-         negativ, gepunktet, schwierigda : boolean;
-         gepunktettl : char;
-         procedure grundsetzen (k:byte);
-         end;
+  { Rohform der Einheiten der ungefilterten Daten }
+  TBaseUnitType = OBJECT(TUnitType)
+    gain, multi : EXTENDED;
+    PROCEDURE init(m : EXTENDED; anf : unitstring);
+  END;
+  baseunittypearray = PACKED ARRAY[0..maxchannels - 1] OF TBaseUnitType;
 
-      { Beschriftungen der Y-Achsen }
-      schriftlistentyp=packed array[0..maxkanal] of string[10];
+  { Endform der Einheiten der gefilterten Daten }
+  belegung = OBJECT(TUnitType)
+    negativ, gepunktet, schwierigda : BOOLEAN;
+    gepunktettl : CHAR;
+    PROCEDURE grundsetzen(k : BYTE);
+  END;
 
-      { Abstraktes Filterobjekt }
-      filterzeiger=^filter;
-      filter=object (tobject)
-         name:string80;
-         next:filterzeiger;
-         destructor alt; virtual;
-         procedure einheitgenerieren (var  beleg:belegung); virtual;
-         procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  { Beschriftungen der Y-Achsen }
+  schriftlistentyp = PACKED ARRAY[0..maxchannelsandfilters] OF STRING[10];
 
-      { abstakter Filter mit Breite }
-      breitefilter=object (filter)
-       public
-         procedure neu (breims:extended);
-       private
-         brei:extended;
-         breianz,breianz2:grossint;
-         procedure vorbereitung (frequenz:extended); virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  { Abstraktes Filterobjekt }
+  filterzeiger = ^filter;
 
-      { arcsin - Filter }
-      arcsinzg=^arcsin;
-      arcsin=object (filter)
-       public
-         constructor neu;
-       private
-         procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  filter = OBJECT(TObject)
+    Name : string80;
+    Next : filterzeiger;
+    DESTRUCTOR alt; VIRTUAL;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
 
-      { arccos - Filter }
-      arccoszg=^arccos;
-      arccos=object (filter)
-       public
-         constructor neu;
-       private
-         procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  { abstakter Filter mit Breite }
+  breitefilter = OBJECT(filter)
+  PUBLIC
+    PROCEDURE neu(breims : EXTENDED);
+  PRIVATE
+    brei :              EXTENDED;
+    breianz, breianz2 : bigint64;
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
 
-      { *(-1) - Filter }
-      invertzg=^invert;
-      invert=object (filter)
-       public
-         constructor neu;
-       private
-         procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  { arcsin - Filter }
+  arcsinzg = ^arcsin;
 
-      { 1/X - Filter}
-      einsdurchzg=^einsdurch;
-      einsdurch=object (filter)
-       public
-         constructor neu;
-       private
-         procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  arcsin = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu;
+  PRIVATE
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
 
-      { +/- Offset - Filter }
-      offsetzg=^offset;
-      offset=object (filter)
-       public
-         constructor neu (k:byte; hoch:sample);
-       private
-         ho:sample;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  { arccos - Filter }
+  arccoszg = ^arccos;
 
-      { *m (Verstaerkungs-) - Filter }
-      malfaktorzg=^malfaktor;
-      malfaktor=object (filter)
-       public
-         constructor neu (malfak:extended);
-       private
-         float:extended;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  arccos = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu;
+  PRIVATE
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
 
-      { y-Achsenstreckungs - Filter }
-      streckungzg=^streckung;
-      streckung=object (filter)
-       public
-         constructor neu (k:byte; maxspannung:extended);
-       private
-         float:extended;
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  { *(-1) - Filter }
+  invertzg = ^invert;
 
-      { Kappung aller Werte < minsample und > maxsample }
-      kappenzg=^kappen;
-      kappen=object (filter)
-       public
-         constructor neu;
-       private
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  invert = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu;
+  PRIVATE
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
 
-      { Additionsfilter }
-      additionzg=^addition;
-      addition=object (filter)
-       public
-         constructor neu (additionskanal:byte);
-       private
-         adk:byte;
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  { 1/X - Filter}
+  einsdurchzg = ^einsdurch;
 
-      { Betragssfilter }
-      betragzg=^betrag;
-      betrag=object (filter)
-       public
-         constructor neu (kanal2:byte);
-       private
-         k2:byte;
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  einsdurch = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu;
+  PRIVATE
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
 
-      { Winkel }
-      winkelzg=^winkel;
-      winkel=object (filter)
-       public
-         constructor neu (xkanal:byte);
-       private
-         xk:byte;
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  { +/- Offset - Filter }
+  offsetzg = ^offset;
 
-      { Korrelationsfilter }
-      korrelationzg=^korrelation;
-      korrelation=object (breitefilter)
-       public
-          constructor neu (korrkanal:byte; breims:extended);
-       private
-          kk:byte;
-          procedure einheitgenerieren (var beleg:belegung); virtual;
-          function gefiltert (posi:grossint):sample; virtual;
-          constructor load (var s:tbufstream);
-          procedure store (var s:tbufstream);
-          end;
+  offset = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu(k : BYTE; hoch : sample);
+  PRIVATE
+    ho : sample;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
 
-      { Absolutbetrags - Filter }
-      absolutzg=^absolut;
-      absolut=object (filter)
-       public
-         constructor neu;
-       private
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  { *m (Verstaerkungs-) - Filter }
+  malfaktorzg = ^malfaktor;
 
-      { Quadrat - Filter }
-      squarezg=^square;
-      square=object (absolut)
-       public
-         constructor neu;
-       private
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  malfaktor = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu(malfak : EXTENDED);
+  PRIVATE
+    float : EXTENDED;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
 
-      { Glaettungs - Filter }
-      glattzg=^glatt;
-      glatt=object (breitefilter)
-       public
-         constructor neu (breims:extended);
-       private
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  { y-Achsenstreckungs - Filter }
+  streckungzg = ^streckung;
 
-      { abstrakter Passfilter }
-      spaltzeiger=^spaltfeld;
-      spaltfeld=array[0..weite] of single;
-      passfilter=object (filter)
-       private
-         gr:grossint;
-         spaltgr:spaltzeiger;
-         we:word;
-         procedure neu (grenzfreq:grossint);
-         destructor alt; virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
-      tiefpasszg=^tiefpass;
-      tiefpass=object (passfilter)
-       public
-         constructor neu (grenzfreq:grossint);
-       private
-         procedure vorbereitung (frequenz:extended); virtual;
-         end;
-      hochpasszg=^hochpass;
-      hochpass=object (passfilter)
-       public
-         constructor neu (grenzfreq:grossint);
-       private
-         procedure vorbereitung (frequenz:extended); virtual;
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         end;
+  streckung = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu(k : BYTE; maxspannung : EXTENDED);
+  PRIVATE
+    float : EXTENDED;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
 
-      { Differenzierungs- Filter }
-      diffzg=^diff;
-      diff=object (filter)
-       public
-         constructor neu;
-       private
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  { Kappung aller Werte < minsample und > maxsample }
+  kappenzg = ^kappen;
 
-      { Integrations- Filter }
-      intzg=^int;
-      int=object (filter)
-       public
-         constructor neu;
-       private
-         gefiltertwert:sample;
-         posiwert:grossint;
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  kappen = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu;
+  PRIVATE
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
 
-      { gleitender Integrations- Filter }
-      glintzg=^glint;
-      glint=object (breitefilter)
-       public
-         constructor neu (breims:extended);
-       private
-         gefiltertwert:sample;
-         posiwert:grossint;
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  { Additionsfilter }
+  additionzg = ^addition;
 
-      { gleitender Linienzug- Filter }
-      gllinzg=^gllin;
-      gllin=object (breitefilter)
-       public
-         constructor neu (breims:extended);
-       private
-         gefiltertwert:sample;
-         posiwert:grossint;
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+  addition = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu(additionskanal : BYTE);
+  PRIVATE
+    adk : BYTE;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
 
-     { X-Achsen-Verschiebungs - Filter }
-      verschiebezg=^verschiebe;
-      verschiebe=object (filter)
-       public
-         constructor neu (umms:extended);
-       private
-         um:extended;
-         posid:grossint;
-         procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  { Betragssfilter }
+  betragzg = ^betrag;
 
-      { Maximum-Minimum-Differenz - Filter }
-      maxminzg=^maxmin;
-      maxmin=object (filter)
-       public
-         constructor neu (breims:extended);
-       private
-         brei:extended;
-         br2:grossint;
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  betrag = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu(kanal2 : BYTE);
+  PRIVATE
+    k2 : BYTE;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
 
-      { Digitalfilter }
-      digitalzg=^digital;
-      digital=object (filter)
-       public
-         constructor neu (k:byte; schwelle:sample; neinheit:string; nwert:extended);
-       private
-         schw:sample;
-         gefiltertwert:sample;
-         posilinkswert,posirechtswert:grossint;
-         neueeinheit:string;
-         neuerwert:extended;
-         procedure einheitgenerieren (var beleg:belegung); virtual;
-         procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  { Winkel }
+  winkelzg = ^winkel;
+
+  winkel = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu(xkanal : BYTE);
+  PRIVATE
+    xk : BYTE;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
+
+  { Korrelationsfilter }
+  korrelationzg = ^korrelation;
+
+  korrelation = OBJECT(breitefilter)
+  PUBLIC
+    CONSTRUCTOR neu(korrkanal : BYTE; breims : EXTENDED);
+  PRIVATE
+    kk : BYTE;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
+
+  { Absolutbetrags - Filter }
+  absolutzg = ^absolut;
+
+  absolut = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu;
+  PRIVATE
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
+
+  { Quadrat - Filter }
+  squarezg = ^square;
+
+  square = OBJECT(absolut)
+  PUBLIC
+    CONSTRUCTOR neu;
+  PRIVATE
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
+
+  { Glaettungs - Filter }
+  glattzg = ^glatt;
+
+  glatt = OBJECT(breitefilter)
+  PUBLIC
+    CONSTRUCTOR neu(breims : EXTENDED);
+  PRIVATE
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
+
+  { abstrakter Passfilter }
+  spaltzeiger = ^spaltfeld;
+  spaltfeld   = ARRAY[0..weite] OF SINGLE;
+
+  passfilter = OBJECT(filter)
+  PRIVATE
+    gr :      bigint64;
+    spaltgr : spaltzeiger;
+    we :      WORD;
+    PROCEDURE neu(grenzfreq : bigint64);
+    DESTRUCTOR alt; VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
+  tiefpasszg = ^tiefpass;
+
+  tiefpass = OBJECT(passfilter)
+  PUBLIC
+    CONSTRUCTOR neu(grenzfreq : bigint64);
+  PRIVATE
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+  END;
+  hochpasszg = ^hochpass;
+
+  hochpass = OBJECT(passfilter)
+  PUBLIC
+    CONSTRUCTOR neu(grenzfreq : bigint64);
+  PRIVATE
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+  END;
+
+  { Differenzierungs- Filter }
+  diffzg = ^diff;
+
+  diff = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu;
+  PRIVATE
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
+
+  { Integrations- Filter }
+  intzg = ^int;
+
+  int = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu;
+  PRIVATE
+    gefiltertwert : sample;
+    posiwert :      bigint64;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
+
+  { gleitender Integrations- Filter }
+  glintzg = ^glint;
+
+  glint = OBJECT(breitefilter)
+  PUBLIC
+    CONSTRUCTOR neu(breims : EXTENDED);
+  PRIVATE
+    gefiltertwert : sample;
+    posiwert :      bigint64;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
+
+  { gleitender Linienzug- Filter }
+  gllinzg = ^gllin;
+
+  gllin = OBJECT(breitefilter)
+  PUBLIC
+    CONSTRUCTOR neu(breims : EXTENDED);
+  PRIVATE
+    gefiltertwert : sample;
+    posiwert :      bigint64;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
+
+  { X-Achsen-Verschiebungs - Filter }
+  verschiebezg = ^verschiebe;
+
+  verschiebe = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu(umms : EXTENDED);
+  PRIVATE
+    um :    EXTENDED;
+    posid : bigint64;
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
+
+  { Maximum-Minimum-Differenz - Filter }
+  maxminzg = ^maxmin;
+
+  maxmin = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu(breims : EXTENDED);
+  PRIVATE
+    brei : EXTENDED;
+    br2 :  bigint64;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
+
+  { Digitalfilter }
+  digitalzg = ^digital;
+
+  digital = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu(k : BYTE; schwelle : sample; neinheit : STRING; nwert : EXTENDED);
+  PRIVATE
+    schw :          sample;
+    gefiltertwert : sample;
+    posilinkswert, posirechtswert : bigint64;
+    neueeinheit :   STRING;
+    neuerwert :     EXTENDED;
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
 
 
-      { Spike - Filter }
-      spikefilterzg=^spikefilter;
-      spikefilter=object (filter)
-       public
-         constructor neu (k:byte; millisek,ablinks,abrechts:extended);
-       private
-         anz:exword;
-         abstli,abstre:sample;
-         ms:extended;
-         abli,abre:extended;
-         procedure vorbereitung (frequenz:extended); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
+  { Spike - Filter }
+  spikefilterzg = ^spikefilter;
 
-var   grund:grundlistetyp;
-      belegungsliste:array[0..maxkanal-1] of belegung;
-      schriftliste:schriftlistentyp;
+  spikefilter = OBJECT(filter)
+  PUBLIC
+    CONSTRUCTOR neu(k : BYTE; millisek, ablinks, abrechts : EXTENDED);
+  PRIVATE
+    anz :            midint32;
+    abstli, abstre : sample;
+    ms :             EXTENDED;
+    abli, abre :     EXTENDED;
+    PROCEDURE vorbereitung(frequenz : EXTENDED); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
 
-procedure neukan (kanaele:byte);
-procedure beschriftungen (var ko:kopfdaten);
+VAR
+  grund :          baseunittypearray;
+  belegungsliste : ARRAY[0..maxchannelsandfilters - 1] OF belegung;
+  schriftliste :   schriftlistentyp;
 
-procedure kanalsetz (k,vonk:byte);
-procedure filtersetz (hilf:filterzeiger; k:byte);
-procedure filterloesch (k:byte);
-function filterdrin(k:byte):boolean;
-function filterzeile (k:byte):string;
+PROCEDURE neukan(kanaele : BYTE);
+PROCEDURE beschriftungen(VAR ko : headerdata);
 
-procedure einheitensetzen (frequenz:extended);
+PROCEDURE kanalsetz(k, vonk : BYTE);
+PROCEDURE filtersetz(hilf : filterzeiger; k : BYTE);
+PROCEDURE filterloesch(k : BYTE);
+FUNCTION filterdrin(k : BYTE) : BOOLEAN;
+FUNCTION filterzeile(k : BYTE) : STRING;
 
-procedure oeffne (name:string80; var ko:kopfdaten);
+PROCEDURE einheitensetzen(frequenz : EXTENDED);
 
-function dat (posi:grossint; k:byte):sample;
+PROCEDURE openfileheader(Name : string80; VAR ko : headerdata);
 
-function extspannung (y:extended; kanal:byte):extended;
-function spannung (y:extended; kanal:byte):grossint;
+FUNCTION dat(posi : bigint64; k : BYTE) : sample;
 
-function norm (sp:extended; kanal:byte) :extended;
+FUNCTION extspannung(y : EXTENDED; kanal : BYTE) : EXTENDED;
+FUNCTION spannung(y : EXTENDED; kanal : BYTE) : bigint64;
 
-procedure streamput (var s:tbufstream);
-procedure streamget (var s:tbufstream);
+FUNCTION norm(sp : EXTENDED; kanal : BYTE) : EXTENDED;
 
-implementation
+PROCEDURE streamput(VAR s : tbufstream);
+PROCEDURE streamget(VAR s : tbufstream);
 
-type  { Ende der Filterkette }
-      endezg=^ende;
-      ende=object (filter)
-         ka:byte;
-         constructor neu (k:byte);
-         procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         constructor load (var s:tbufstream);
-         procedure store (var s:tbufstream);
-         end;
-      weiterzg=^weiter;
-      weiter=object (ende)
-         procedure einheitgenerieren (var  beleg:belegung); virtual;
-         function gefiltert (posi:grossint):sample; virtual;
-         end;
+IMPLEMENTATION
 
-const defaulteinheit:grundtyp=
-         (faktor:10/maxsample; vor:''; anfang:'V'; sekunde:0; gain:1; multi:1);
-      vz:array[boolean] of string[1]=('','+');
+TYPE  { Ende der Filterkette }
+  endezg = ^ende;
 
-      rende       :tstreamrec=(objtype:300;           vmtlink:ofs(typeof(ende)^);
-                               load:@ende.load;       store:@ende.store);
-      rweiter     :tstreamrec=(objtype:399;           vmtlink:ofs(typeof(weiter)^);
-                               load:@ende.load;       store:@ende.store);
-      rinvert     :tstreamrec=(objtype:301;           vmtlink:ofs(typeof(invert)^);
-                               load:@filter.load;     store:@filter.store);
-      roffset     :tstreamrec=(objtype:302;           vmtlink:ofs(typeof(offset)^);
-                               load:@offset.load;     store:@offset.store);
-      rmalfaktor  :tstreamrec=(objtype:303;           vmtlink:ofs(typeof(malfaktor)^);
-                               load:@malfaktor.load;  store:@malfaktor.store);
-      rkappen     :tstreamrec=(objtype:304;           vmtlink:ofs(typeof(kappen)^);
-                               load:@filter.load;     store:@filter.store);
-      rabsolut    :tstreamrec=(objtype:305;           vmtlink:ofs(typeof(absolut)^);
-                               load:@filter.load;     store:@filter.store);
-      rsquare     :tstreamrec=(objtype:306;           vmtlink:ofs(typeof(square)^);
-                               load:@filter.load;     store:@filter.store);
-      rglatt      :tstreamrec=(objtype:307;           vmtlink:ofs(typeof(glatt)^);
-                               load:@breitefilter.load;store:@breitefilter.store);
-      rtiefpass   :tstreamrec=(objtype:308;           vmtlink:ofs(typeof(tiefpass)^);
-                               load:@passfilter.load; store:@passfilter.store);
-      rhochpass   :tstreamrec=(objtype:309;           vmtlink:ofs(typeof(hochpass)^);
-                               load:@passfilter.load; store:@passfilter.store);
-      rdiff       :tstreamrec=(objtype:310;           vmtlink:ofs(typeof(diff)^);
-                               load:@filter.load;     store:@filter.store);
-      rverschiebe :tstreamrec=(objtype:311;           vmtlink:ofs(typeof(verschiebe)^);
-                               load:@verschiebe.load; store:@verschiebe.store);
-      rmaxmin     :tstreamrec=(objtype:312;           vmtlink:ofs(typeof(maxmin)^);
-                               load:@maxmin.load;     store:@maxmin.store);
-      rspikefilter:tstreamrec=(objtype:313;           vmtlink:ofs(typeof(spikefilter)^);
-                               load:@spikefilter.load;store:@spikefilter.store);
-      rstreckung  :tstreamrec=(objtype:314;           vmtlink:ofs(typeof(streckung)^);
-                               load:@streckung.load;  store:@streckung.store);
-      reinsdurch  :tstreamrec=(objtype:315;           vmtlink:ofs(typeof(einsdurch)^);
-                               load:@filter.load;     store:@filter.store);
-      raddition   :tstreamrec=(objtype:316;           vmtlink:ofs(typeof(addition)^);
-                               load:@addition.load;   store:@addition.store);
-      rint        :tstreamrec=(objtype:317;           vmtlink:ofs(typeof(int)^);
-                               load:@filter.load;     store:@filter.store);
-      rglint      :tstreamrec=(objtype:318;           vmtlink:ofs(typeof(glint)^);
-                               load:@breitefilter.load;store:@breitefilter.store);
-      rgllin      :tstreamrec=(objtype:319;           vmtlink:ofs(typeof(gllin)^);
-                               load:@breitefilter.load;store:@breitefilter.store);
-      rarcsin     :tstreamrec=(objtype:320;           vmtlink:ofs(typeof(arcsin)^);
-                               load:@filter.load;     store:@filter.store);
-      rarccos     :tstreamrec=(objtype:321;           vmtlink:ofs(typeof(arccos)^);
-                               load:@filter.load;     store:@filter.store);
-      rkorrelation:tstreamrec=(objtype:322;           vmtlink:ofs(typeof(korrelation)^);
-                               load:@korrelation.load;store:@korrelation.store);
+  ende = OBJECT(filter)
+    ka : BYTE;
+    CONSTRUCTOR neu(k : BYTE);
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+    CONSTRUCTOR load(VAR s : tbufstream);
+    PROCEDURE store(VAR s : tbufstream);
+  END;
+  weiterzg = ^weiter;
+
+  weiter = OBJECT(ende)
+    PROCEDURE einheitgenerieren(VAR beleg : belegung); VIRTUAL;
+    FUNCTION gefiltert(posi : bigint64) : sample; VIRTUAL;
+  END;
+
+CONST
+  defaultunit : TBaseUnitType =
+    (factor : 10 / maxsample; pre : ''; start : 'V'; second : 0; gain : 1; multi : 1);
+  vz : ARRAY[BOOLEAN] OF STRING[1] = ('', '+');
+
+  rende : tstreamrec = (objtype : 300; vmtlink : ofs(typeof(ende)^);
+    load : @ende.load; store : @ende.store);
+  rweiter : tstreamrec = (objtype : 399; vmtlink : ofs(typeof(weiter)^);
+    load : @ende.load; store : @ende.store);
+  rinvert : tstreamrec = (objtype : 301; vmtlink : ofs(typeof(invert)^);
+    load : @filter.load; store : @filter.store);
+  roffset : tstreamrec = (objtype : 302; vmtlink : ofs(typeof(offset)^);
+    load : @offset.load; store : @offset.store);
+  rmalfaktor : tstreamrec = (objtype : 303; vmtlink : ofs(typeof(malfaktor)^);
+    load : @malfaktor.load; store : @malfaktor.store);
+  rkappen : tstreamrec = (objtype : 304; vmtlink : ofs(typeof(kappen)^);
+    load : @filter.load; store : @filter.store);
+  rabsolut : tstreamrec = (objtype : 305; vmtlink : ofs(typeof(absolut)^);
+    load : @filter.load; store : @filter.store);
+  rsquare : tstreamrec = (objtype : 306; vmtlink : ofs(typeof(square)^);
+    load : @filter.load; store : @filter.store);
+  rglatt : tstreamrec = (objtype : 307; vmtlink : ofs(typeof(glatt)^);
+    load : @breitefilter.load; store : @breitefilter.store);
+  rtiefpass : tstreamrec = (objtype : 308; vmtlink : ofs(typeof(tiefpass)^);
+    load : @passfilter.load; store : @passfilter.store);
+  rhochpass : tstreamrec = (objtype : 309; vmtlink : ofs(typeof(hochpass)^);
+    load : @passfilter.load; store : @passfilter.store);
+  rdiff : tstreamrec = (objtype : 310; vmtlink : ofs(typeof(diff)^);
+    load : @filter.load; store : @filter.store);
+  rverschiebe : tstreamrec = (objtype : 311; vmtlink : ofs(typeof(verschiebe)^);
+    load : @verschiebe.load; store : @verschiebe.store);
+  rmaxmin : tstreamrec = (objtype : 312; vmtlink : ofs(typeof(maxmin)^);
+    load : @maxmin.load; store : @maxmin.store);
+  rspikefilter : tstreamrec = (objtype : 313; vmtlink : ofs(typeof(spikefilter)^);
+    load : @spikefilter.load; store : @spikefilter.store);
+  rstreckung : tstreamrec = (objtype : 314; vmtlink : ofs(typeof(streckung)^);
+    load : @streckung.load; store : @streckung.store);
+  reinsdurch : tstreamrec = (objtype : 315; vmtlink : ofs(typeof(einsdurch)^);
+    load : @filter.load; store : @filter.store);
+  raddition : tstreamrec = (objtype : 316; vmtlink : ofs(typeof(addition)^);
+    load : @addition.load; store : @addition.store);
+  rint : tstreamrec = (objtype : 317; vmtlink : ofs(typeof(int)^);
+    load : @filter.load; store : @filter.store);
+  rglint : tstreamrec = (objtype : 318; vmtlink : ofs(typeof(glint)^);
+    load : @breitefilter.load; store : @breitefilter.store);
+  rgllin : tstreamrec = (objtype : 319; vmtlink : ofs(typeof(gllin)^);
+    load : @breitefilter.load; store : @breitefilter.store);
+  rarcsin : tstreamrec = (objtype : 320; vmtlink : ofs(typeof(arcsin)^);
+    load : @filter.load; store : @filter.store);
+  rarccos : tstreamrec = (objtype : 321; vmtlink : ofs(typeof(arccos)^);
+    load : @filter.load; store : @filter.store);
+  rkorrelation : tstreamrec = (objtype : 322; vmtlink : ofs(typeof(korrelation)^);
+    load : @korrelation.load; store : @korrelation.store);
       {rdigital    :tstreamrec=(objtype:323;           vmtlink:ofs(typeof(digital)^);
                                load:@digital.load;    store:@digital.store);}
-      rwinkel     :tstreamrec=(objtype:324;           vmtlink:ofs(typeof(winkel)^);
-                               load:@winkel.load;     store:@winkel.store);
-      rbetrag     :tstreamrec=(objtype:325;           vmtlink:ofs(typeof(betrag)^);
-                               load:@betrag.load;     store:@betrag.store);
-      rdigital    :tstreamrec=(objtype:326;           vmtlink:ofs(typeof(digital)^);
-                               load:@digital.load;    store:@digital.store);
+  rwinkel : tstreamrec = (objtype : 324; vmtlink : ofs(typeof(winkel)^);
+    load : @winkel.load; store : @winkel.store);
+  rbetrag : tstreamrec = (objtype : 325; vmtlink : ofs(typeof(betrag)^);
+    load : @betrag.load; store : @betrag.store);
+  rdigital : tstreamrec = (objtype : 326; vmtlink : ofs(typeof(digital)^);
+    load : @digital.load; store : @digital.store);
 
 
 
-var   filteranfang:array[1..maxkanal-1] of filterzeiger;
-      kan:byte;
-      fre:extended;
-      diffaktor:extended;
-      i:word;
+VAR
+  filteranfang : ARRAY[1..maxchannelsandfilters - 1] OF filterzeiger;
+  kan :          BYTE;
+  fre :          EXTENDED;
+  diffaktor :    EXTENDED;
+  i :            WORD;
 
-procedure einheittyp.kopie (var ein:einheittyp);
-begin
-self:=ein;
-end;
+PROCEDURE TUnitType.clone(VAR atype : TUnitType);
+BEGIN
+  self := atype;
+END;
 
-function einheittyp.einhwort:einheitstring;
-const liste:array [-2..2] of string[3]=('/s'#253,'/s','','s','s'#253);
-begin
-if (anfang='1') and (sekunde=-1) then einhwort:=vor+'Hz'
-                                 else
- if (vor='') and (anfang='1') and (sekunde=0) then einhwort:=''
-                                              else
-   case sekunde of
-      -2..0:einhwort:=vor+anfang+liste[sekunde];
-      1,2:if anfang='1' then einhwort:=vor+liste[sekunde]
-                        else einhwort:=vor+anfang+liste[sekunde];
-      else if sekunde<-2 then einhwort:=vor+anfang+'/s^'+bequem.wort(-sekunde)
-                         else einhwort:=vor+anfang+'s^'+bequem.wort(sekunde);
-      end;
-end;
+FUNCTION TUnitType.getunit : unitstring;
+CONST
+  liste : ARRAY [-2..2] OF STRING[3] = ('/s'#253, '/s', '', 's', 's'#253);
+VAR
+  Result : unitstring;
+BEGIN
+  IF (start = '1') AND (second = -1) THEN Result := pre + 'Hz'
+  ELSE
+  IF (pre = '') AND (start = '1') AND (second = 0) THEN Result := ''
+  ELSE
+    CASE second OF
+      -2..0 : Result := pre + start + liste[second];
+      1, 2 : IF start = '1' THEN Result := pre + liste[second]
+        ELSE
+          Result := pre + start + liste[second];
+      ELSE
+        IF second < -2 THEN Result := pre + start + '/s^' + bequem.wort(-second)
+        ELSE
+          Result := pre + start + 's^' + bequem.wort(second);
+    END;
+  getunit := Result;
+  //writeln(format('start=%s, second=%d, pre=%s, liste[second]=%s, result=%s',
+    //[start, second, pre, liste[second], Result]));
+END;
 
-function einheittyp.plot:string80;
-var   kom:string80;
-      p:grossint;
-begin
-if (vor='') and (anfang='1') and (sekunde=0) then kom:=''
-                                              else begin
-   if vor='æ'then kom:=plmu
-             else kom:='LB'+vor+#3;
-   if (anfang='1') and (sekunde=-1) then kom:=kom+'LBHz'#3
-                                    else begin
+FUNCTION TUnitType.plot : string80;
+VAR
+  kom : string80;
+  p :   bigint64;
+BEGIN
+  IF (pre = '') AND (start = '1') AND (second = 0) THEN kom := ''
+  ELSE
+  BEGIN
+    IF pre = '' THEN kom := plmu
+    ELSE
+      kom := 'LB' + pre + #3;
+    IF (start = '1') AND (second = -1) THEN kom := kom + 'LBHz'#3
+    ELSE
+    BEGIN
 
-      if (sekunde<=0) or (anfang<>'1') then kom:=kom+'LB'+anfang;
-      p:=pos(#253,kom);
-      while p>0 do begin
-         delete(kom,p,1); insert(#3'CP0,0.3;LB2'#3'CP0,-0.3;LB',kom,p);
-         p:=pos(#253,kom);
-         end;
-      if sekunde=0 then kom:=kom+#3
-                   else begin
-         if sekunde<0 then kom:=kom+'/';
-         kom:=kom+'s'#3;
-         if abs(sekunde)>1 then kom:=kom+'CP0,0.3;LB'+bequem.wort(abs(sekunde))+#3'CP0,-0.3;';
-         end;
-      end;
-   end;
-plot:=kom;
-end;
+      IF (second <= 0) OR (start <> '1') THEN kom := kom + 'LB' + start;
+      p := pos(#253, kom);
+      WHILE p > 0 DO
+      BEGIN
+        Delete(kom, p, 1);
+        insert(#3'CP0,0.3;LB2'#3'CP0,-0.3;LB', kom, p);
+        p := pos(#253, kom);
+      END;
+      IF second = 0 THEN kom := kom + #3
+      ELSE
+      BEGIN
+        IF second < 0 THEN kom := kom + '/';
+        kom := kom + 's'#3;
+        IF abs(second) > 1 THEN kom := kom + 'CP0,0.3;LB' + bequem.wort(abs(second)) + #3'CP0,-0.3;';
+      END;
+    END;
+  END;
+  plot := kom;
+END;
 
-procedure einheittyp.handlich;
-type  string1=string[1];
-var   n:integer;
-      x:extended;
-procedure setz (mal:extended; davor:string1);
-begin
-faktor:=faktor*mal; vor:=davor;
-end;
-begin
-x:=faktor*maxsample*1.00001; if x<=1E-9 then x:=1E-9;
-if (sekunde=0) and (anfang='') then schwierig
-                               else begin
-   n:=round(log(x)-0.5);
-   case n-1 of
-     -11,-10, -9:setz(1E12,'p');
-      -8, -7, -6:setz( 1E9,'n');
-      -5, -4, -3:setz( 1E6,'u');
-      -2, -1,  0:setz( 1E3,'m');
-       1,  2,  3:setz( 1E0,'');
-       4,  5,  6:setz(1E-3,'k');
-       7,  8,  9:setz(1E-6,'M');
-      10, 11, 12:setz(1E-9,'G');
-     else schwierig;
-     end;
-   if length(einhwort)>5 then schwierig;
-   end;
-end;
+PROCEDURE TUnitType.handlich;
+TYPE
+  string1 = STRING[1];
+VAR
+  n : INTEGER;
+  x : EXTENDED;
 
-procedure einheittyp.schwierig;
-var   n:grossint;
-      x:extended;
-begin
-x:=faktor*maxsample*1.00001; if x<=1E-9 then x:=1E-9;
-n:=pred(trunc(log(x))); if n<0 then dec(n,2);
-n:=3*(n div 3);
-if n>0 then faktor:=faktor/xpot(n) else faktor:=faktor*xpot(-n);
-anfang:='1E'+wort(n); sekunde:=0;
-end;
+  PROCEDURE setz(mal : EXTENDED; davor : string1);
+  BEGIN
+    //writeln(format('TUnitType.handlich.setz(mal,davor,factor,pre)=(%g, %s, %g, %s)', [mal, davor, factor, pre]));
+    factor := factor * mal;
+    pre    := davor;
+    //writeln(format('TUnitType.handlich.setz(mal,davor,factor,pre)=(%g, %s, %g, %s)', [mal, davor, factor, pre]));
+  END;
 
-procedure grundtyp.setz (m:extended; anf:einheitstring);
-var   len:byte absolute anf; pos:byte;
-begin
-kompri(anf); pos:=len;
-if len>=1 then begin
-   sekunde:=1;
-   case anf[len] of
-      '0'..'9':if len>=3 then if anf[pred(len)]='^' then begin
-         sekunde:=zahl(anf[len]); dec(pos,2) end;
-      #253:if len>=2 then begin sekunde:=2; dec(pos) end;
-      end;
-   if anf[pos]='s' then begin
-      len:=pred(pos);
-      if len>=1 then case anf[len] of
-         '/':begin dec(len); sekunde:=-sekunde end;
-         '*':dec(len);
-         end;
-      end          else sekunde:=0;
-   end    else sekunde:=0;
-anfang:=copy(anf,1,5);
-multi:=m;
-faktor:=multi*gain;
-end;
+BEGIN
+  x := factor * maxsample * 1.00001;
+  //writeln(format('%g, %d, %g',[factor, maxsample, x]));
+  IF x <= 1E-9 THEN x := 1E-9;
+  IF (second = 0) AND (start = '') THEN schwierig
+  ELSE
+  BEGIN
+    n := round(log(x) - 0.5);
+    CASE n - 1 OF
+      -11, -10, -9 : setz(1E12, 'p');
+      -8, -7, -6 : setz(1E9, 'n');
+      -5, -4, -3 : setz(1E6, 'u');
+      -2, -1, 0 : setz(1E3, 'm');
+      1, 2, 3 : setz(1E0, '');
+      4, 5, 6 : setz(1E-3, 'k');
+      7, 8, 9 : setz(1E-6, 'M');
+      10, 11, 12 : setz(1E-9, 'G');
+      ELSE
+        schwierig;
+    END;
+    IF length(getunit) > 5 THEN schwierig;
+  END;
+END;
 
-procedure belegung.grundsetzen (k:byte);
-begin
-kopie(grund[k]); negativ:=true; gepunktet:=false; schwierigda:=false;
-end;
+PROCEDURE TUnitType.schwierig;
+VAR
+  n : bigint64;
+  x : EXTENDED;
+BEGIN
+  x := factor * maxsample * 1.00001;
+  IF x <= 1E-9 THEN x := 1E-9;
+  n := pred(trunc(log(x)));
+  IF n < 0 THEN Dec(n, 2);
+  n := 3 * (n DIV 3);
+  IF n > 0 THEN factor := factor / xpot(n)
+  ELSE
+    factor             := factor * xpot(-n);
+  start := '1E' + wort(n);
+  second := 0;
+END;
+
+PROCEDURE TBaseUnitType.init(m : EXTENDED; anf : unitstring);
+VAR
+  len : BYTE absolute anf;
+  pos : BYTE;
+BEGIN
+  kompri(anf);
+  pos := len;
+  IF len >= 1 THEN
+  BEGIN
+    second := 1;
+    CASE anf[len] OF
+      '0'..'9' : IF len >= 3 THEN IF anf[pred(len)] = '^' THEN
+          BEGIN
+            second := zahl(anf[len]);
+            Dec(pos, 2);
+          END;
+      #253 : IF len >= 2 THEN
+        BEGIN
+          second := 2;
+          Dec(pos);
+        END;
+    END;
+    IF anf[pos] = 's' THEN
+    BEGIN
+      len := pred(pos);
+      IF len >= 1 THEN CASE anf[len] OF
+          '/' : BEGIN
+            Dec(len);
+            second := -second;
+          END;
+          '*' : Dec(len);
+        END;
+    END
+    ELSE
+      second := 0;
+  END
+  ELSE
+    second := 0;
+  start    := copy(anf, 1, 5);
+  multi    := m;
+  factor   := multi * gain;
+END;
+
+PROCEDURE belegung.grundsetzen(k : BYTE);
+BEGIN
+  clone(grund[k]);
+  negativ     := True;
+  gepunktet   := False;
+  schwierigda := False;
+END;
 
 { filter }
 
-constructor filter.load;
-begin
-s.read(name,sizeof(name));
-next:=filterzeiger(s.get);
-end;
+CONSTRUCTOR filter.load;
+BEGIN
+  s.Read(Name, sizeof(Name));
+  Next := filterzeiger(s.get);
+END;
 
-procedure filter.store;
-begin
-s.write(name,sizeof(name));
-s.put(next);
-end;
+PROCEDURE filter.store;
+BEGIN
+  s.Write(Name, sizeof(Name));
+  s.put(Next);
+END;
 
-destructor filter.alt;
-begin end;
+DESTRUCTOR filter.alt;
+BEGIN
+END;
 
-procedure filter.einheitgenerieren (var beleg:belegung);
-begin
-next^.einheitgenerieren(beleg);
-end;
+PROCEDURE filter.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  Next^.einheitgenerieren(beleg);
+END;
 
-procedure filter.vorbereitung;
-begin end;
+PROCEDURE filter.vorbereitung;
+BEGIN
+END;
 
-function filter.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=next^.gefiltert(posi);
-end;
+FUNCTION filter.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := Next^.gefiltert(posi);
+END;
 
 { ende }
 
-constructor ende.neu (k:byte);
-begin
-ka:=k; next:=nil; name:='#'+wort(k);
-end;
+CONSTRUCTOR ende.neu(k : BYTE);
+BEGIN
+  ka   := k;
+  Next := nil;
+  Name := '#' + wort(k);
+END;
 
-constructor ende.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(ka,sizeof(byte));
-end;
+CONSTRUCTOR ende.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(ka, sizeof(BYTE));
+END;
 
-procedure ende.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(ka,sizeof(byte));
-end;
+PROCEDURE ende.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(ka, sizeof(BYTE));
+END;
 
-procedure ende.einheitgenerieren (var beleg:belegung);
-begin
-beleg.grundsetzen(ka)
-end;
+PROCEDURE ende.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  beleg.grundsetzen(ka);
+END;
 
-function ende.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=lesef(posi,ka);
-end;
+FUNCTION ende.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := lesef(posi, ka);
+END;
 
 { weiter }
 
-procedure weiter.einheitgenerieren (var beleg:belegung);
-begin
-filteranfang[ka]^.einheitgenerieren(beleg);
-end;
+PROCEDURE weiter.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filteranfang[ka]^.einheitgenerieren(beleg);
+END;
 
-function weiter.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=filteranfang[ka]^.gefiltert(posi);
-end;
+FUNCTION weiter.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := filteranfang[ka]^.gefiltert(posi);
+END;
 
 { breitefilter }
 
-procedure breitefilter.neu (breims:extended);
-begin
-brei:=breims;
-end;
+PROCEDURE breitefilter.neu(breims : EXTENDED);
+BEGIN
+  brei := breims;
+END;
 
-constructor breitefilter.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(brei,sizeof(extended));
-end;
+CONSTRUCTOR breitefilter.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(brei, sizeof(EXTENDED));
+END;
 
-procedure breitefilter.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(brei,sizeof(extended));
-end;
+PROCEDURE breitefilter.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(brei, sizeof(EXTENDED));
+END;
 
-procedure breitefilter.vorbereitung (frequenz:extended);
-begin
-breianz2:=round(brei*frequenz/2000); breianz:=2*breianz2+1;
-end;
+PROCEDURE breitefilter.vorbereitung(frequenz : EXTENDED);
+BEGIN
+  breianz2 := round(brei * frequenz / 2000);
+  breianz  := 2 * breianz2 + 1;
+END;
 
 { arcsin - Filter }
-constructor arcsin.neu;
-begin
-name:='arcsin';
-end;
+CONSTRUCTOR arcsin.neu;
+BEGIN
+  Name := 'arcsin';
+END;
 
-procedure arcsin.einheitgenerieren (var  beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-with beleg do begin
-   faktor:=pi/2/maxsample;
-   negativ:=true;
-   anfang:='rad';
-   sekunde:=0;
-   end;
-end;
+PROCEDURE arcsin.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    factor  := pi / 2 / maxsample;
+    negativ := True;
+    start   := 'rad';
+    second  := 0;
+  END;
+END;
 
-function arcsin.gefiltert (posi:grossint):sample;
-const fak=maxsample/pi*2;
-var x,x1:extended;
-begin
-x:=next^.gefiltert(posi)/maxsample;
-x1:=1-x*x;
-if x1>1e-10 then gefiltert:=round(arctan(x/sqrt(x1))*fak)
-            else if x>0 then gefiltert:=maxsample
-                        else gefiltert:=-maxsample;
-end;
+FUNCTION arcsin.gefiltert(posi : bigint64) : sample;
+CONST
+  fak = maxsample / pi * 2;
+VAR
+  x, x1 : EXTENDED;
+BEGIN
+  x  := Next^.gefiltert(posi) / maxsample;
+  x1 := 1 - x * x;
+  IF x1 > 1e-10 THEN gefiltert := round(arctan(x / sqrt(x1)) * fak)
+  ELSE IF x > 0 THEN gefiltert := maxsample
+  ELSE
+    gefiltert := -maxsample;
+END;
 
 { arccos - Filter }
-constructor arccos.neu;
-begin
-name:='arccos';
-end;
+CONSTRUCTOR arccos.neu;
+BEGIN
+  Name := 'arccos';
+END;
 
-procedure arccos.einheitgenerieren (var  beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-with beleg do begin
-   faktor:=pi/maxsample;
-   negativ:=false;
-   anfang:='rad';
-   sekunde:=0;
-   end;
-end;
+PROCEDURE arccos.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    factor  := pi / maxsample;
+    negativ := False;
+    start   := 'rad';
+    second  := 0;
+  END;
+END;
 
-function arccos.gefiltert (posi:grossint):sample;
-const fak=maxsample/pi;
-      pi2=pi/2;
-var x,x1:extended;
-begin
-x:=next^.gefiltert(posi)/maxsample;
-x1:=1-x*x;
-if x1>1e-10 then gefiltert:=round((pi2-arctan(x/sqrt(x1)))*fak)
-       else if x>0 then gefiltert:=0
-                   else gefiltert:=maxsample;
-end;
+FUNCTION arccos.gefiltert(posi : bigint64) : sample;
+CONST
+  fak = maxsample / pi;
+  pi2 = pi / 2;
+VAR
+  x, x1 : EXTENDED;
+BEGIN
+  x  := Next^.gefiltert(posi) / maxsample;
+  x1 := 1 - x * x;
+  IF x1 > 1e-10 THEN gefiltert := round((pi2 - arctan(x / sqrt(x1))) * fak)
+  ELSE IF x > 0 THEN gefiltert := 0
+  ELSE
+    gefiltert := maxsample;
+END;
 
 { invert }
 
-constructor invert.neu;
-begin
-name:='*(-1)';
-end;
+CONSTRUCTOR invert.neu;
+BEGIN
+  Name := '*(-1)';
+END;
 
-procedure invert.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-beleg.negativ:=true;
-end;
+PROCEDURE invert.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  beleg.negativ := True;
+END;
 
-function invert.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=-next^.gefiltert(posi);
-end;
+FUNCTION invert.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := -Next^.gefiltert(posi);
+END;
 
 { einsdurch }
 
-const einsdurchfak=1e6;
+CONST
+  einsdurchfak = 1e6;
 
-constructor einsdurch.neu;
-begin
-name:='1/X';
-end;
+CONSTRUCTOR einsdurch.neu;
+BEGIN
+  Name := '1/X';
+END;
 
-procedure einsdurch.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-with beleg do begin
-   faktor:=1/faktor/maxsample/einsdurchfak;
-   case length(anfang) of
-    0:;
-    1:if anfang<>'1' then anfang:='1/'+anfang;
-    2..3:anfang:='1/('+anfang+')';
-    else schwierigda:=true;
-    end;
-   sekunde:=-sekunde;
-   end;
-end;
+PROCEDURE einsdurch.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    factor := 1 / factor / maxsample / einsdurchfak;
+    CASE length(start) OF
+      0 : ;
+      1 : IF start <> '1' THEN start := '1/' + start;
+      2..3 : start := '1/(' + start + ')';
+      ELSE
+        schwierigda := True;
+    END;
+    second := -second;
+  END;
+END;
 
-function einsdurch.gefiltert (posi:grossint):sample;
-var   wert:sample;
-begin
-wert:=next^.gefiltert(posi);
-if wert<=einsdurchfak then gefiltert:=maxsample
-                      else gefiltert:=round(maxsample/wert*einsdurchfak);
-end;
+FUNCTION einsdurch.gefiltert(posi : bigint64) : sample;
+VAR
+  wert : sample;
+BEGIN
+  wert := Next^.gefiltert(posi);
+  IF wert <= einsdurchfak THEN gefiltert := maxsample
+  ELSE
+    gefiltert := round(maxsample / wert * einsdurchfak);
+END;
 
 { offset }
 
-constructor offset.neu (k:byte; hoch:sample);
-begin
-ho:=hoch;
-name:='Offset '+vz[ho>=0]+extwort(ho*belegungsliste[k].faktor,3,2)
-      +belegungsliste[k].einhwort;
-end;
+CONSTRUCTOR offset.neu(k : BYTE; hoch : sample);
+BEGIN
+  ho   := hoch;
+  Name := 'Offset ' + vz[ho >= 0] + extwort(ho * belegungsliste[k].factor, 3, 2) + belegungsliste[k].getunit;
+END;
 
-constructor offset.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(ho,sizeof(sample));
-end;
+CONSTRUCTOR offset.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(ho, sizeof(sample));
+END;
 
-procedure offset.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(ho,sizeof(sample));
-end;
+PROCEDURE offset.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(ho, sizeof(sample));
+END;
 
-function offset.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=next^.gefiltert(posi)+ho;
-end;
+FUNCTION offset.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := Next^.gefiltert(posi) + ho;
+END;
 
 { malfaktor }
 
-constructor malfaktor.neu (malfak:extended);
-begin
-float:=malfak;
-name:='*'+extfwort(malfak,3);
-end;
+CONSTRUCTOR malfaktor.neu(malfak : EXTENDED);
+BEGIN
+  float := malfak;
+  Name  := '*' + extfwort(malfak, 3);
+END;
 
-constructor malfaktor.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(float,sizeof(extended));
-end;
+CONSTRUCTOR malfaktor.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(float, sizeof(EXTENDED));
+END;
 
-procedure malfaktor.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(float,sizeof(extended));
-end;
+PROCEDURE malfaktor.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(float, sizeof(EXTENDED));
+END;
 
-function malfaktor.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=round(next^.gefiltert(posi)*float);
-end;
+FUNCTION malfaktor.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := round(Next^.gefiltert(posi) * float);
+END;
 
 { streckung }
 
-constructor streckung.neu (k:byte; maxspannung:extended);
-begin
-float:=belegungsliste[k].faktor*maxsample/abs(maxspannung);
-name:='**'+extfwort(float,3);
-end;
+CONSTRUCTOR streckung.neu(k : BYTE; maxspannung : EXTENDED);
+BEGIN
+  float := belegungsliste[k].factor * maxsample / abs(maxspannung);
+  Name  := '**' + extfwort(float, 3);
+END;
 
-constructor streckung.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(float,sizeof(extended));
-end;
+CONSTRUCTOR streckung.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(float, sizeof(EXTENDED));
+END;
 
-procedure streckung.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(float,sizeof(extended));
-end;
+PROCEDURE streckung.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(float, sizeof(EXTENDED));
+END;
 
-procedure streckung.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-beleg.faktor:=beleg.faktor/float;
-end;
+PROCEDURE streckung.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  beleg.factor := beleg.factor / float;
+END;
 
-function streckung.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=round(next^.gefiltert(posi)*float);
-end;
+FUNCTION streckung.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := round(Next^.gefiltert(posi) * float);
+END;
 
 { kappen }
 
-constructor kappen.neu;
-begin
-name:='Clip';
-end;
+CONSTRUCTOR kappen.neu;
+BEGIN
+  Name := 'Clip';
+END;
 
-function kappen.gefiltert(posi:grossint):sample;
-var   wert:sample;
-begin
-wert:=next^.gefiltert(posi);
-if wert>maxsample then wert:=maxsample else
-   if wert<minsample then wert:=minsample;
-gefiltert:=wert;
-end;
+FUNCTION kappen.gefiltert(posi : bigint64) : sample;
+VAR
+  wert : sample;
+BEGIN
+  wert := Next^.gefiltert(posi);
+  IF wert > maxsample THEN wert := maxsample
+  ELSE
+  IF wert < minsample THEN wert := minsample;
+  gefiltert := wert;
+END;
 
 { addition }
 
-constructor addition.neu (additionskanal:byte);
-begin
-adk:=additionskanal;
-name:='+ Chan. '+wort(adk);
-end;
+CONSTRUCTOR addition.neu(additionskanal : BYTE);
+BEGIN
+  adk  := additionskanal;
+  Name := '+ Chan. ' + wort(adk);
+END;
 
-constructor addition.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(adk,1);
-end;
+CONSTRUCTOR addition.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(adk, 1);
+END;
 
-procedure addition.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(adk,1);
-end;
+PROCEDURE addition.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(adk, 1);
+END;
 
-procedure addition.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-beleg.faktor:=beleg.faktor*2;
-end;
+PROCEDURE addition.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  beleg.factor := beleg.factor * 2;
+END;
 
-function addition.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=(next^.gefiltert(posi)+dat(posi,adk)) div 2;
-end;
+FUNCTION addition.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := (Next^.gefiltert(posi) + dat(posi, adk)) DIV 2;
+END;
 
 { x-y-Betrag }
 
-constructor betrag.neu (kanal2:byte);
-begin
-k2:=kanal2;
-name:='³(x Chan.'+wort(k2)+')³';
-end;
+CONSTRUCTOR betrag.neu(kanal2 : BYTE);
+BEGIN
+  k2   := kanal2;
+  Name := 'x Chan.' + wort(k2) + '';
+END;
 
-constructor betrag.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(k2,1);
-end;
+CONSTRUCTOR betrag.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(k2, 1);
+END;
 
-procedure betrag.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(k2,1);
-end;
+PROCEDURE betrag.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(k2, 1);
+END;
 
-procedure betrag.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-beleg.negativ:=false;
-end;
+PROCEDURE betrag.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  beleg.negativ := False;
+END;
 
-function betrag.gefiltert (posi:grossint):sample;
-var ys,zs:extended;
-begin
-ys:=next^.gefiltert(posi);
-zs:=dat(posi,k2);
-gefiltert:=round(sqrt(ys*ys+zs*zs));
-end;
+FUNCTION betrag.gefiltert(posi : bigint64) : sample;
+VAR
+  ys, zs : EXTENDED;
+BEGIN
+  ys        := Next^.gefiltert(posi);
+  zs        := dat(posi, k2);
+  gefiltert := round(sqrt(ys * ys + zs * zs));
+END;
 
 { Winkel }
 
-constructor winkel.neu (xkanal:byte);
-begin
-xk:=xkanal;
-name:='(y) Angle (x=#'+wort(xk)+')';
-end;
+CONSTRUCTOR winkel.neu(xkanal : BYTE);
+BEGIN
+  xk   := xkanal;
+  Name := '(y) Angle (x=#' + wort(xk) + ')';
+END;
 
-constructor winkel.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(xk,1);
-end;
+CONSTRUCTOR winkel.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(xk, 1);
+END;
 
-procedure winkel.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(xk,1);
-end;
+PROCEDURE winkel.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(xk, 1);
+END;
 
-procedure winkel.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-with beleg do begin
-   faktor:=pi/maxsample;
-   negativ:=true;
-   anfang:='rad';
-   sekunde:=0;
-   end;
-end;
+PROCEDURE winkel.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    factor  := pi / maxsample;
+    negativ := True;
+    start   := 'rad';
+    second  := 0;
+  END;
+END;
 
-function winkel.gefiltert (posi:grossint):sample;
-const fak=maxsample/pi;
-      halb=round(fak*pi);
-var x,y:sample;
-    winkel:sample;
-begin
-x:=dat(posi,xk);
-y:=next^.gefiltert(posi);
-if (x=0) and (y=0) then winkel:=minsample
-   else if abs(x)>abs(y) then
-            if (y>=0)=(x>=0) then winkel:=round(arctan(y/x)*fak)
-                             else winkel:=round((arctan(y/x)+pi)*fak)
-            else winkel:=round((pi/2-arctan(x/y))*fak);
-if y<0 then gefiltert:=winkel-halb else gefiltert:=winkel;
-end;
+FUNCTION winkel.gefiltert(posi : bigint64) : sample;
+CONST
+  fak  = maxsample / pi;
+  halb = round(fak * pi);
+VAR
+  x, y :   sample;
+  winkel : sample;
+BEGIN
+  x := dat(posi, xk);
+  y := Next^.gefiltert(posi);
+  IF (x = 0) AND (y = 0) THEN winkel := minsample
+  ELSE IF abs(x) > abs(y) THEN
+    IF (y >= 0) = (x >= 0) THEN winkel := round(arctan(y / x) * fak)
+    ELSE
+      winkel := round((arctan(y / x) + pi) * fak)
+  ELSE
+    winkel := round((pi / 2 - arctan(x / y)) * fak);
+  IF y < 0 THEN gefiltert := winkel - halb
+  ELSE
+    gefiltert             := winkel;
+END;
 
 { absolut }
 
-constructor absolut.neu;
-begin
-name:='³x³';
-end;
+CONSTRUCTOR absolut.neu;
+BEGIN
+    Name := 'x';
+END;
 
-procedure absolut.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-beleg.negativ:=false;
-end;
+PROCEDURE absolut.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  beleg.negativ := False;
+END;
 
-function absolut.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=abs(next^.gefiltert(posi));
-end;
+FUNCTION absolut.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := abs(Next^.gefiltert(posi));
+END;
 
 { square }
 
-constructor square.neu;
-begin
-name:='xý';
-end;
+CONSTRUCTOR square.neu;
+BEGIN
+  Name := 'x';
+END;
 
-procedure square.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-with beleg do begin
-   negativ:=false; faktor:=sqr(faktor)*maxsample; schwierigda:=true end;
-end;
+PROCEDURE square.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    negativ     := False;
+    factor      := sqr(factor) * maxsample;
+    schwierigda := True;
+  END;
+END;
 
-function square.gefiltert (posi:grossint):sample;
-var xs:extended;
-begin
-xs:=next^.gefiltert(posi);
-gefiltert:=round(xs*xs/maxsample);
-end;
+FUNCTION square.gefiltert(posi : bigint64) : sample;
+VAR
+  xs : EXTENDED;
+BEGIN
+  xs        := Next^.gefiltert(posi);
+  gefiltert := round(xs * xs / maxsample);
+END;
 
 { glatt }
 
-constructor glatt.neu (breims:extended);
-begin
-breitefilter.neu(breims); name:='Gl.Avg. '#29+extwort(brei,3,1)+'ms';
-end;
+CONSTRUCTOR glatt.neu(breims : EXTENDED);
+BEGIN
+  breitefilter.neu(breims);
+  Name := 'Gl.Avg. '#29 + extwort(brei, 3, 1) + 'ms';
+END;
 
-function glatt.gefiltert (posi:grossint):sample;
-var   i:grossint;
-      sum:extended;
-begin
-sum:=0; i:=posi-breianz2; while i<=posi+breianz2 do begin sum:=sum+next^.gefiltert(i); inc(i) end;
-gefiltert:=round(sum/breianz);
-end;
+FUNCTION glatt.gefiltert(posi : bigint64) : sample;
+VAR
+  i :   bigint64;
+  sum : EXTENDED;
+BEGIN
+  sum := 0;
+  i   := posi - breianz2;
+  WHILE i <= posi + breianz2 DO
+  BEGIN
+    sum := sum + Next^.gefiltert(i);
+    Inc(i);
+  END;
+  gefiltert := round(sum / breianz);
+END;
 
 { Korrelation }
 
-constructor korrelation.neu (korrkanal:byte; breims:extended);
-begin
-inherited neu(breims);
-kk:=korrkanal;
-name:='Corr. to '+wort(kk)+' ('+extwort(brei,3,1)+'ms)';
-end;
+CONSTRUCTOR korrelation.neu(korrkanal : BYTE; breims : EXTENDED);
+BEGIN
+  INHERITED neu(breims);
+  kk   := korrkanal;
+  Name := 'Corr. to ' + wort(kk) + ' (' + extwort(brei, 3, 1) + 'ms)';
+END;
 
-constructor korrelation.load (var s:tbufstream);
-begin
-inherited load(s);
-s.read(kk,1);
-end;
+CONSTRUCTOR korrelation.load(VAR s : tbufstream);
+BEGIN
+  INHERITED load(s);
+  s.Read(kk, 1);
+END;
 
-procedure korrelation.store (var s:tbufstream);
-begin
-inherited store(s);
-s.write(kk,1);
-end;
+PROCEDURE korrelation.store(VAR s : tbufstream);
+BEGIN
+  INHERITED store(s);
+  s.Write(kk, 1);
+END;
 
-procedure korrelation.einheitgenerieren (var beleg:belegung);
-begin
-inherited einheitgenerieren(beleg);
-with beleg do begin
-   faktor:=1/maxsample;
-   anfang:='1';
-   sekunde:=0;
-   end;
-end;
+PROCEDURE korrelation.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  INHERITED einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    factor := 1 / maxsample;
+    start  := '1';
+    second := 0;
+  END;
+END;
 
-function korrelation.gefiltert (posi:grossint):sample;
-var   i:grossint;
-      x,y,sx,sy,sxq,syq,sxy:extended;
-begin
-sx:=0; sy:=0; sxq:=0; syq:=0; sxy:=0;
-i:=-breianz2;
-while i<=+breianz2 do begin
-   x:=next^.gefiltert(posi+i);
-   y:=dat(posi+i,kk);
-   sx:=sx+x; sy:=sy+y;
-   sxq:=sxq+x*x; syq:=syq+y*y;
-   sxy:=sxy+x*y;
-   inc(i);
-   end;
-if (sxq<1e-40) and (syq<1e-40) then gefiltert:=maxsample
-                               else
-gefiltert:=round((breianz*sxy-sx*sy)/sqrt((breianz*sxq-sx*sx)*(breianz*syq-sy*sy))*maxsample);
-end;
+FUNCTION korrelation.gefiltert(posi : bigint64) : sample;
+VAR
+  i : bigint64;
+  x, y, sx, sy, sxq, syq, sxy : EXTENDED;
+BEGIN
+  sx  := 0;
+  sy  := 0;
+  sxq := 0;
+  syq := 0;
+  sxy := 0;
+  i   := -breianz2;
+  WHILE i <= +breianz2 DO
+  BEGIN
+    x   := Next^.gefiltert(posi + i);
+    y   := dat(posi + i, kk);
+    sx  := sx + x;
+    sy  := sy + y;
+    sxq := sxq + x * x;
+    syq := syq + y * y;
+    sxy := sxy + x * y;
+    Inc(i);
+  END;
+  IF (sxq < 1e-40) AND (syq < 1e-40) THEN gefiltert := maxsample
+  ELSE
+    gefiltert := round((breianz * sxy - sx * sy) / sqrt((breianz * sxq - sx * sx) * (breianz * syq - sy * sy)) *
+      maxsample);
+END;
 
 { passfilter }
 
-procedure passfilter.neu (grenzfreq:grossint);
-begin
-gr:=grenzfreq; name:=wort(gr)+'Hz'; new(spaltgr);
-end;
+PROCEDURE passfilter.neu(grenzfreq : bigint64);
+BEGIN
+  gr   := grenzfreq;
+  Name := wort(gr) + 'Hz';
+  new(spaltgr);
+END;
 
-constructor passfilter.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(gr,sizeof(gr)); new(spaltgr);
-end;
+CONSTRUCTOR passfilter.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(gr, sizeof(gr));
+  new(spaltgr);
+END;
 
-procedure passfilter.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(gr,sizeof(gr));
-end;
+PROCEDURE passfilter.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(gr, sizeof(gr));
+END;
 
-function passfilter.gefiltert (posi:grossint):sample;
-var   i:-weite..weite;  sum:extended;
-begin
-sum:=0;
-for i:=we downto -we do sum:=sum+next^.gefiltert(posi-i)*spaltgr^[abs(i)];
-gefiltert:=round(sum);
-end;
+FUNCTION passfilter.gefiltert(posi : bigint64) : sample;
+VAR
+  i :   -weite..weite;
+  sum : EXTENDED;
+BEGIN
+  sum := 0;
+  FOR i := we DOWNTO -we DO sum := sum + Next^.gefiltert(posi - i) * spaltgr^[abs(i)];
+  gefiltert := round(sum);
+END;
 
-destructor passfilter.alt;
-begin
-dispose(spaltgr);
-end;
+DESTRUCTOR passfilter.alt;
+BEGIN
+  dispose(spaltgr);
+END;
 
-constructor tiefpass.neu (grenzfreq:grossint);
-begin
-passfilter.neu(grenzfreq);
-name:='LP '+name;
-end;
+CONSTRUCTOR tiefpass.neu(grenzfreq : bigint64);
+BEGIN
+  passfilter.neu(grenzfreq);
+  Name := 'LP ' + Name;
+END;
 
-procedure tiefpass.vorbereitung (frequenz:extended);
-var   fak:extended;
-      j:integer;
-begin
-fak:=gr/frequenz; we:=min(round(genau*pi/fak),weite);
-spaltgr^[0]:=fak/pi; for j:=1 to we do spaltgr^[j]:=sin(j*fak)/j/pi;
-end;
+PROCEDURE tiefpass.vorbereitung(frequenz : EXTENDED);
+VAR
+  fak : EXTENDED;
+  j :   INTEGER;
+BEGIN
+  fak         := gr / frequenz;
+  we          := min(round(genau * pi / fak), weite);
+  spaltgr^[0] := fak / pi;
+  FOR j := 1 TO we DO spaltgr^[j] := sin(j * fak) / j / pi;
+END;
 
-constructor hochpass.neu (grenzfreq:grossint);
-begin
-passfilter.neu(grenzfreq);
-name:='HP '+name;
-end;
+CONSTRUCTOR hochpass.neu(grenzfreq : bigint64);
+BEGIN
+  passfilter.neu(grenzfreq);
+  Name := 'HP ' + Name;
+END;
 
-procedure hochpass.vorbereitung (frequenz:extended);
-var   fak:extended;
-      j:integer;
-begin
-fak:=gr/frequenz; we:=min(round(genau*pi/fak),weite);
-spaltgr^[0]:=1-fak/pi; for j:=1 to we do spaltgr^[j]:=-sin(j*fak)/j/pi;
-end;
+PROCEDURE hochpass.vorbereitung(frequenz : EXTENDED);
+VAR
+  fak : EXTENDED;
+  j :   INTEGER;
+BEGIN
+  fak         := gr / frequenz;
+  we          := min(round(genau * pi / fak), weite);
+  spaltgr^[0] := 1 - fak / pi;
+  FOR j := 1 TO we DO spaltgr^[j] := -sin(j * fak) / j / pi;
+END;
 
-procedure hochpass.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-beleg.negativ:=true;
-end;
+PROCEDURE hochpass.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  beleg.negativ := True;
+END;
 
 { Diff-Filter }
 
-constructor diff.neu;
-begin
-name:='d/dt';
-end;
+CONSTRUCTOR diff.neu;
+BEGIN
+  Name := 'd/dt';
+END;
 
-procedure diff.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-with beleg do begin faktor:=faktor*fre; dec(sekunde) end;
-beleg.negativ:=true;
-end;
+PROCEDURE diff.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    factor := factor * fre;
+    Dec(second);
+  END;
+  beleg.negativ := True;
+END;
 
-procedure diff.vorbereitung (frequenz:extended);
-begin end;
+PROCEDURE diff.vorbereitung(frequenz : EXTENDED);
+BEGIN
+END;
 
-function diff.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=round((next^.gefiltert(posi+1)-next^.gefiltert(posi-1))*diffaktor);
-end;
+FUNCTION diff.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := round((Next^.gefiltert(posi + 1) - Next^.gefiltert(posi - 1)) * diffaktor);
+END;
 
 { Integrationsfilter }
 
-constructor int.neu;
-begin
-name:='* dt';
-end;
+CONSTRUCTOR int.neu;
+BEGIN
+  Name := '* dt';
+END;
 
-procedure int.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-with beleg do begin faktor:=faktor/fre; inc(sekunde) end;
-end;
+PROCEDURE int.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    factor := factor / fre;
+    Inc(second);
+  END;
+END;
 
-procedure int.vorbereitung (frequenz:extended);
-begin
-posiwert:=0; gefiltertwert:=0;
-end;
+PROCEDURE int.vorbereitung(frequenz : EXTENDED);
+BEGIN
+  posiwert      := 0;
+  gefiltertwert := 0;
+END;
 
-function int.gefiltert (posi:grossint):sample;
-var  i:grossint;
-begin
-if posi<posiwert then begin
-    i:=posi+1;
-    while i<=posiwert do begin dec(gefiltertwert,next^.gefiltert(i)); inc(i) end
-    end
-                 else begin
-    i:=posiwert+1;
-    while i<=posi do begin inc(gefiltertwert,next^.gefiltert(i)); inc(i) end
-    end;
-posiwert:=posi;
-gefiltert:=gefiltertwert;
-end;
+FUNCTION int.gefiltert(posi : bigint64) : sample;
+VAR
+  i : bigint64;
+BEGIN
+  IF posi < posiwert THEN
+  BEGIN
+    i := posi + 1;
+    WHILE i <= posiwert DO
+    BEGIN
+      Dec(gefiltertwert, Next^.gefiltert(i));
+      Inc(i);
+    END;
+  END
+  ELSE
+  BEGIN
+    i := posiwert + 1;
+    WHILE i <= posi DO
+    BEGIN
+      Inc(gefiltertwert, Next^.gefiltert(i));
+      Inc(i);
+    END;
+  END;
+  posiwert  := posi;
+  gefiltert := gefiltertwert;
+END;
 
 { gleitender Integrationsfilter }
 
-constructor glint.neu(breims:extended);
-begin
-breitefilter.neu(breims); name:='* dt '#29+extwort(brei,3,1)+'ms';
-end;
+CONSTRUCTOR glint.neu(breims : EXTENDED);
+BEGIN
+  breitefilter.neu(breims);
+  Name := '* dt '#29 + extwort(brei, 3, 1) + 'ms';
+END;
 
-procedure glint.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-with beleg do begin faktor:=faktor/fre; inc(sekunde) end;
-end;
+PROCEDURE glint.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    factor := factor / fre;
+    Inc(second);
+  END;
+END;
 
-procedure glint.vorbereitung (frequenz:extended);
-begin
-breitefilter.vorbereitung(frequenz);
-posiwert:=-breianz2-2; gefiltertwert:=0;
-end;
+PROCEDURE glint.vorbereitung(frequenz : EXTENDED);
+BEGIN
+  breitefilter.vorbereitung(frequenz);
+  posiwert      := -breianz2 - 2;
+  gefiltertwert := 0;
+END;
 
-function glint.gefiltert (posi:grossint):sample;
-var  i:grossint;
-begin
-if posi<posiwert then begin
-    i:=posi+1;
-    while i<=posiwert do begin
-        dec(gefiltertwert,next^.gefiltert(i+breianz2)
-                         -next^.gefiltert(i-breianz2));
-        inc(i)
-        end
-    end
-                 else begin
-    i:=posiwert+1;
-    while i<=posi do begin
-        inc(gefiltertwert,next^.gefiltert(i+breianz2)
-                         -next^.gefiltert(i-breianz2));
-        inc(i)
-        end
-    end;
-posiwert:=posi;
-gefiltert:=gefiltertwert;
-end;
+FUNCTION glint.gefiltert(posi : bigint64) : sample;
+VAR
+  i : bigint64;
+BEGIN
+  IF posi < posiwert THEN
+  BEGIN
+    i := posi + 1;
+    WHILE i <= posiwert DO
+    BEGIN
+      Dec(gefiltertwert, Next^.gefiltert(i + breianz2) - Next^.gefiltert(i - breianz2));
+      Inc(i);
+    END;
+  END
+  ELSE
+  BEGIN
+    i := posiwert + 1;
+    WHILE i <= posi DO
+    BEGIN
+      Inc(gefiltertwert, Next^.gefiltert(i + breianz2) - Next^.gefiltert(i - breianz2));
+      Inc(i);
+    END;
+  END;
+  posiwert  := posi;
+  gefiltert := gefiltertwert;
+END;
 
 { gleitender Linienzugfilter }
 
-constructor gllin.neu(breims:extended);
-begin
-breitefilter.neu(breims); name:='ä³dy³ '#29+extwort(brei,3,1)+'ms';
-end;
+CONSTRUCTOR gllin.neu(breims : EXTENDED);
+BEGIN
+  breitefilter.neu(breims);
+  Name := 'ä³dy'#29 + extwort(brei, 3, 1) + 'ms';
+END;
 
-procedure gllin.einheitgenerieren (var beleg:belegung);
-begin
-inherited einheitgenerieren(beleg);
-with beleg do begin negativ:=false; faktor:=faktor; dec(sekunde) end;
-end;
+PROCEDURE gllin.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  INHERITED einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    negativ := False;
+    factor  := factor;
+    Dec(second);
+  END;
+END;
 
-procedure gllin.vorbereitung (frequenz:extended);
-begin
-breitefilter.vorbereitung(frequenz);
-posiwert:=-breianz2-2; gefiltertwert:=0;
-end;
+PROCEDURE gllin.vorbereitung(frequenz : EXTENDED);
+BEGIN
+  breitefilter.vorbereitung(frequenz);
+  posiwert      := -breianz2 - 2;
+  gefiltertwert := 0;
+END;
 
-function gllin.gefiltert (posi:grossint):sample;
-var  i:grossint;
-begin
-if posi<posiwert then begin
-    i:=posi+1;
-    while i<=posiwert do begin
-        dec(gefiltertwert,abs(next^.gefiltert(i+breianz2)
-                             -next^.gefiltert(i+breianz2-1))
-                         -abs(next^.gefiltert(i-breianz2)
-                             -next^.gefiltert(i-breianz2-1)));
-        inc(i)
-        end
-    end
-                  else begin
-    i:=posiwert+1;
-    while i<=posi do begin
-        inc(gefiltertwert,abs(next^.gefiltert(i+breianz2)
-                             -next^.gefiltert(i+breianz2-1))
-                         -abs(next^.gefiltert(i-breianz2)
-                             -next^.gefiltert(i-breianz2-1)));
-        inc(i)
-        end
-    end;
-posiwert:=posi;
-gefiltert:=gefiltertwert;
-end;
+FUNCTION gllin.gefiltert(posi : bigint64) : sample;
+VAR
+  i : bigint64;
+BEGIN
+  IF posi < posiwert THEN
+  BEGIN
+    i := posi + 1;
+    WHILE i <= posiwert DO
+    BEGIN
+      Dec(gefiltertwert, abs(Next^.gefiltert(i + breianz2) - Next^.gefiltert(i + breianz2 - 1)) -
+        abs(Next^.gefiltert(i - breianz2) - Next^.gefiltert(i - breianz2 - 1)));
+      Inc(i);
+    END;
+  END
+  ELSE
+  BEGIN
+    i := posiwert + 1;
+    WHILE i <= posi DO
+    BEGIN
+      Inc(gefiltertwert, abs(Next^.gefiltert(i + breianz2) - Next^.gefiltert(i + breianz2 - 1)) -
+        abs(Next^.gefiltert(i - breianz2) - Next^.gefiltert(i - breianz2 - 1)));
+      Inc(i);
+    END;
+  END;
+  posiwert  := posi;
+  gefiltert := gefiltertwert;
+END;
 
 { Verschiebefilter }
 
-constructor verschiebe.neu (umms:extended);
-begin
-um:=umms; name:=vz[um>=0]+extwort(um,2,1)+'ms';
-end;
+CONSTRUCTOR verschiebe.neu(umms : EXTENDED);
+BEGIN
+  um   := umms;
+  Name := vz[um >= 0] + extwort(um, 2, 1) + 'ms';
+END;
 
-constructor verschiebe.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(um,sizeof(extended));
-end;
+CONSTRUCTOR verschiebe.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(um, sizeof(EXTENDED));
+END;
 
-procedure verschiebe.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(um,sizeof(extended));
-end;
+PROCEDURE verschiebe.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(um, sizeof(EXTENDED));
+END;
 
-procedure verschiebe.vorbereitung (frequenz:extended);
-begin
-posid:=round(um*frequenz/1000);
-end;
+PROCEDURE verschiebe.vorbereitung(frequenz : EXTENDED);
+BEGIN
+  posid := round(um * frequenz / 1000);
+END;
 
-function verschiebe.gefiltert (posi:grossint):sample;
-begin
-gefiltert:=next^.gefiltert(posi+posid);
-end;
+FUNCTION verschiebe.gefiltert(posi : bigint64) : sample;
+BEGIN
+  gefiltert := Next^.gefiltert(posi + posid);
+END;
 
-constructor maxmin.neu (breims:extended);
-begin
-brei:=breims;
-name:='Max-Min '#29+extwort(brei,2,1)+'ms';
-end;
+CONSTRUCTOR maxmin.neu(breims : EXTENDED);
+BEGIN
+  brei := breims;
+  Name := 'Max-Min '#29 + extwort(brei, 2, 1) + 'ms';
+END;
 
-constructor maxmin.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(brei,sizeof(extended));
-end;
+CONSTRUCTOR maxmin.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(brei, sizeof(EXTENDED));
+END;
 
-procedure maxmin.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(brei,sizeof(extended));
-end;
+PROCEDURE maxmin.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(brei, sizeof(EXTENDED));
+END;
 
-procedure maxmin.einheitgenerieren (var beleg:belegung);
-begin
-filter.einheitgenerieren(beleg);
-beleg.faktor:=beleg.faktor*2; beleg.negativ:=false;
-end;
+PROCEDURE maxmin.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  filter.einheitgenerieren(beleg);
+  beleg.factor  := beleg.factor * 2;
+  beleg.negativ := False;
+END;
 
-procedure maxmin.vorbereitung (frequenz:extended);
-begin
-br2:=round(brei*frequenz/2000);
-end;
+PROCEDURE maxmin.vorbereitung(frequenz : EXTENDED);
+BEGIN
+  br2 := round(brei * frequenz / 2000);
+END;
 
-function maxmin.gefiltert (posi:grossint):sample;
-var   i:grossint;
-      wert,wertmin,wertmax:minsample-1..maxsample+1;
-begin
-wertmax:=minsample-1; wertmin:=maxsample+1;
-i:=posi-br2;
-while i<=posi+br2 do begin
-   wert:=next^.gefiltert(i);
-   if wert>wertmax then wertmax:=wert;
-   if wert<wertmin then wertmin:=wert;
-   inc(i)
-   end;
-gefiltert:=(wertmax-wertmin) div 2;
-end;
+FUNCTION maxmin.gefiltert(posi : bigint64) : sample;
+VAR
+  i : bigint64;
+  wert, wertmin, wertmax : INTEGER;//minsample-1..maxsample+1;
+BEGIN
+  wertmax := minsample - 1;
+  wertmin := maxsample + 1;
+  i       := posi - br2;
+  WHILE i <= posi + br2 DO
+  BEGIN
+    wert := Next^.gefiltert(i);
+    IF wert > wertmax THEN wertmax := wert;
+    IF wert < wertmin THEN wertmin := wert;
+    Inc(i);
+  END;
+  gefiltert := (wertmax - wertmin) DIV 2;
+END;
 
 { Digitalfilter }
 
-constructor digital.neu (k:byte; schwelle:sample; neinheit:string; nwert:extended);
-begin
-schw:=schwelle;
-neueeinheit:=neinheit;
-neuerwert:=nwert;
-name:='Pulse counter '+extwort(schw*belegungsliste[k].faktor,3,2)
-      +belegungsliste[k].einhwort+' ('+extwort(neuerwert,5,3)+' '+neueeinheit+')';
-end;
+CONSTRUCTOR digital.neu(k : BYTE; schwelle : sample; neinheit : STRING; nwert : EXTENDED);
+BEGIN
+  schw        := schwelle;
+  neueeinheit := neinheit;
+  neuerwert   := nwert;
+  Name        := 'Pulse counter ' + extwort(schw * belegungsliste[k].factor, 3, 2) +
+    belegungsliste[k].getunit + ' (' + extwort(neuerwert, 5, 3) + ' ' + neueeinheit + ')';
+END;
 
-procedure digital.einheitgenerieren(var beleg:belegung);
-begin
-inherited einheitgenerieren(beleg);
-with beleg do begin
-   faktor:=neuerwert*fre/maxsample/2;
-   anfang:=neueeinheit;
-   sekunde:=-1;
-   negativ:=true;
-   end;
-end;
+PROCEDURE digital.einheitgenerieren(VAR beleg : belegung);
+BEGIN
+  INHERITED einheitgenerieren(beleg);
+  WITH beleg DO
+  BEGIN
+    factor  := neuerwert * fre / maxsample / 2;
+    start   := neueeinheit;
+    second  := -1;
+    negativ := True;
+  END;
+END;
 
-procedure digital.vorbereitung (frequenz:extended);
-begin
-posilinkswert:=0; posirechtswert:=0; gefiltertwert:=0;
-end;
+PROCEDURE digital.vorbereitung(frequenz : EXTENDED);
+BEGIN
+  posilinkswert  := 0;
+  posirechtswert := 0;
+  gefiltertwert  := 0;
+END;
 
-constructor digital.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(schw,sizeof(sample));
-s.read(neueeinheit,sizeof(neueeinheit));
-s.read(neuerwert,sizeof(neuerwert));
-end;
+CONSTRUCTOR digital.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(schw, sizeof(sample));
+  s.Read(neueeinheit, sizeof(neueeinheit));
+  s.Read(neuerwert, sizeof(neuerwert));
+END;
 
-procedure digital.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(schw,sizeof(sample));
-s.write(neueeinheit,sizeof(neueeinheit));
-s.write(neuerwert,sizeof(neuerwert));
-end;
+PROCEDURE digital.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(schw, sizeof(sample));
+  s.Write(neueeinheit, sizeof(neueeinheit));
+  s.Write(neuerwert, sizeof(neuerwert));
+END;
 
-function digital.gefiltert (posi:grossint):sample;
-var li,re,minli,maxre:grossint;
-begin
-if (posi>=posilinkswert) and (posi<posirechtswert) then
-   gefiltert:=gefiltertwert
-                                                   else begin
-   li:=posi; re:=posi;
-   minli:=posi-100000; maxre:=posi+100000;
-   while (abs(next^.gefiltert(li))<schw) and (li>=minli) do dec(li);
-   while abs(next^.gefiltert(li))>schw do dec(li); inc(li);
-   while abs(next^.gefiltert(re))>schw do inc(re);
-   while (abs(next^.gefiltert(re))<schw) and (re<=maxre) do inc(re);
-   if (li<=minli) or (re>maxre) then begin
-    gefiltert:=0;
-    gefiltertwert:=0; posilinkswert:=li; posirechtswert:=re;
-    end
-    else begin
-      if (next^.gefiltert(li)>0) and (next^.gefiltert(re)>0)
-         then gefiltertwert:=round(maxsample/(re-li)*2)
-           else if (next^.gefiltert(li)<0) and (next^.gefiltert(re)<0)
-                  then gefiltertwert:=round(maxsample/(li-re)*2)
-                  else gefiltertwert:=0;
-      gefiltert:=gefiltertwert;
-      posilinkswert:=li; posirechtswert:=re;
-      end;
-   end;
-end;
+FUNCTION digital.gefiltert(posi : bigint64) : sample;
+VAR
+  li, re, minli, maxre : bigint64;
+BEGIN
+  IF (posi >= posilinkswert) AND (posi < posirechtswert) THEN
+    gefiltert := gefiltertwert
+  ELSE
+  BEGIN
+    li    := posi;
+    re    := posi;
+    minli := posi - 100000;
+    maxre := posi + 100000;
+    WHILE (abs(Next^.gefiltert(li)) < schw) AND (li >= minli) DO Dec(li);
+    WHILE abs(Next^.gefiltert(li)) > schw DO Dec(li);
+    Inc(li);
+    WHILE abs(Next^.gefiltert(re)) > schw DO Inc(re);
+    WHILE (abs(Next^.gefiltert(re)) < schw) AND (re <= maxre) DO Inc(re);
+    IF (li <= minli) OR (re > maxre) THEN
+    BEGIN
+      gefiltert      := 0;
+      gefiltertwert  := 0;
+      posilinkswert  := li;
+      posirechtswert := re;
+    END
+    ELSE
+    BEGIN
+      IF (Next^.gefiltert(li) > 0) AND (Next^.gefiltert(re) > 0) THEN gefiltertwert := round(maxsample / (re - li) * 2)
+      ELSE IF (Next^.gefiltert(li) < 0) AND (Next^.gefiltert(re) < 0) THEN
+        gefiltertwert := round(maxsample / (li - re) * 2)
+      ELSE
+        gefiltertwert := 0;
+      gefiltert := gefiltertwert;
+      posilinkswert  := li;
+      posirechtswert := re;
+    END;
+  END;
+END;
 
 { Spikefilter }
 
-constructor spikefilter.neu (k:byte; millisek,ablinks,abrechts:extended);
-var    ableitungein:einheittyp;
-begin
-ms:=millisek;
-ableitungein:=belegungsliste[k];
-dec(ableitungein.sekunde);  ableitungein.faktor:=ableitungein.faktor*fre;
-abli:=ablinks/ableitungein.faktor; abre:=abrechts/ableitungein.faktor;
-name:='Spike '#29+extwort(ms,3,1)+'ms '#24+extwort(ablinks,3,0)
-      +ableitungein.einhwort+' '+#25+extwort(abrechts,3,0)
-      +ableitungein.einhwort;
-end;
+CONSTRUCTOR spikefilter.neu(k : BYTE; millisek, ablinks, abrechts : EXTENDED);
+VAR
+  ableitungein : TUnitType;
+BEGIN
+  ms           := millisek;
+  ableitungein := belegungsliste[k];
+  Dec(ableitungein.second);
+  ableitungein.factor := ableitungein.factor * fre;
+  abli                := ablinks / ableitungein.factor;
+  abre                := abrechts / ableitungein.factor;
+  Name                := 'Spike '#29 + extwort(ms, 3, 1) + 'ms '#24 + extwort(ablinks, 3, 0) +
+    ableitungein.getunit + ' ' + #25 + extwort(abrechts, 3, 0) + ableitungein.getunit;
+END;
 
-constructor spikefilter.load (var s:tbufstream);
-begin
-filter.load(s);
-s.read(ms,sizeof(extended));
-s.read(abli,sizeof(extended)); s.read(abre,sizeof(extended));
-end;
+CONSTRUCTOR spikefilter.load(VAR s : tbufstream);
+BEGIN
+  filter.load(s);
+  s.Read(ms, sizeof(EXTENDED));
+  s.Read(abli, sizeof(EXTENDED));
+  s.Read(abre, sizeof(EXTENDED));
+END;
 
-procedure spikefilter.store (var s:tbufstream);
-begin
-filter.store(s);
-s.write(ms,sizeof(extended));
-s.write(abli,sizeof(extended)); s.write(abre,sizeof(extended));
-end;
+PROCEDURE spikefilter.store(VAR s : tbufstream);
+BEGIN
+  filter.store(s);
+  s.Write(ms, sizeof(EXTENDED));
+  s.Write(abli, sizeof(EXTENDED));
+  s.Write(abre, sizeof(EXTENDED));
+END;
 
-procedure spikefilter.vorbereitung (frequenz:extended);
-begin
-abstli:=round(abli*fre/frequenz);
-abstre:=round(abre*fre/frequenz);
-anz:=min(round(ms*frequenz/1000),spikemax);
-end;
+PROCEDURE spikefilter.vorbereitung(frequenz : EXTENDED);
+BEGIN
+  abstli := round(abli * fre / frequenz);
+  abstre := round(abre * fre / frequenz);
+  anz    := min(round(ms * frequenz / 1000), spikemax);
+END;
 
-function spikefilter.gefiltert (posi:grossint):sample;
-label weiter;
-var   bei,bei2,bis:longint;
-      mitte:array[-spikemax..spikemax] of sample;
-begin
-for bei:=-anz to anz do mitte[bei]:=next^.gefiltert(posi+bei);
-bei:=0;
-while mitte[bei]-mitte[bei-1]<abstli do begin
-    dec(bei); if bei-1<-anz then goto weiter end;
-bei2:=bei;
-repeat
-   dec(bei2); if bei2-1<-anz then goto weiter;
-until mitte[bei2]-mitte[bei2-1]<abstli;
-bis:=bei2+anz;
-repeat
-   inc(bei); if bei>bis then goto weiter;
-until mitte[bei]-mitte[bei-1]<=-abstre;
-repeat
-   inc(bei); if bei>bis then goto weiter;
-until mitte[bei]-mitte[bei-1]>-abstre;
-if bei<=0 then goto weiter;
-gefiltert:=round(mitte[bei2]+(mitte[bei-1]-mitte[bei2])/(bei2-bei-1.0)*bei2);
-exit;
+FUNCTION spikefilter.gefiltert(posi : bigint64) : sample;
+LABEL
+  weiter;
+VAR
+  bei, bei2, bis : LONGINT;
+  mitte :          ARRAY[-spikemax..spikemax] OF sample;
+BEGIN
+  FOR bei := -anz TO anz DO mitte[bei] := Next^.gefiltert(posi + bei);
+  bei := 0;
+  WHILE mitte[bei] - mitte[bei - 1] < abstli DO
+  BEGIN
+    Dec(bei);
+    IF bei - 1 < -anz THEN GOTO weiter;
+  END;
+  bei2 := bei;
+  REPEAT
+    Dec(bei2);
+    IF bei2 - 1 < -anz THEN GOTO weiter;
+  UNTIL mitte[bei2] - mitte[bei2 - 1] < abstli;
+  bis := bei2 + anz;
+  REPEAT
+    Inc(bei);
+    IF bei > bis THEN GOTO weiter;
+  UNTIL mitte[bei] - mitte[bei - 1] <= -abstre;
+  REPEAT
+    Inc(bei);
+    IF bei > bis THEN GOTO weiter;
+  UNTIL mitte[bei] - mitte[bei - 1] > -abstre;
+  IF bei <= 0 THEN GOTO weiter;
+  gefiltert := round(mitte[bei2] + (mitte[bei - 1] - mitte[bei2]) / (bei2 - bei - 1.0) * bei2);
+  exit;
 
-weiter:gefiltert:=mitte[0];
-end;
+  weiter :
+    gefiltert := mitte[0];
+END;
 
-procedure neukan (kanaele:byte);
-var   i:byte;
-begin
-kan:=kanaele;
-for i:=1 to maxkanal-1 do filterloesch(i);
-end;
+PROCEDURE neukan(kanaele : BYTE);
+VAR
+  i : BYTE;
+BEGIN
+  kan := kanaele;
+  FOR i := 1 TO maxchannelsandfilters - 1 DO filterloesch(i);
+END;
 
-procedure beschriftungen (var ko:kopfdaten);
-begin
-for i:=0 to kan-1 do begin
-   schriftliste[i]:=copy(ko.k[i].name,1,10);
-   grund[i]:=defaulteinheit;
-   grund[i].gain:=ko.k[i].faktor1*ko.k[i].faktor2;
-   grund[i].setz(1,copy(ko.k[i].einheit,1,7));
-   end;
-for i:=kan to kan+filtermax-1 do schriftliste[i]:=schriftliste[i mod kan];
-schriftliste[maxkanal]:='- ';
-end;
+PROCEDURE beschriftungen(VAR ko : headerdata);
+BEGIN
+  FOR i := 0 TO kan - 1 DO
+  BEGIN
+    schriftliste[i] := copy(ko.channels[i].Name, 1, 10);
+    grund[i]        := defaultunit;
+    grund[i].gain   := ko.channels[i].factor1 * ko.channels[i].factor2;
+    grund[i].init(1, copy(ko.channels[i].channelunit, 1, 7));
+  END;
+  FOR i := kan TO kan + maxfilters - 1 DO schriftliste[i] := schriftliste[i MOD kan];
+  schriftliste[maxchannelsandfilters] := '- ';
+END;
 
-procedure kanalsetz (k,vonk:byte);
-begin
-filterloesch(k);
-dispose(filteranfang[k],alt);
-if vonk<kan then begin
-   filteranfang[k]:=new(endezg,neu(vonk));
-   schriftliste[k]:=schriftliste[vonk];
-   end      else begin
-   filteranfang[k]:=new(weiterzg,neu(vonk));
-   schriftliste[k]:='[#'+wort(vonk)+']';
-   end;
-end;
+PROCEDURE kanalsetz(k, vonk : BYTE);
+BEGIN
+  filterloesch(k);
+  dispose(filteranfang[k], alt);
+  IF vonk < kan THEN
+  BEGIN
+    filteranfang[k] := new(endezg, neu(vonk));
+    schriftliste[k] := schriftliste[vonk];
+  END
+  ELSE
+  BEGIN
+    filteranfang[k] := new(weiterzg, neu(vonk));
+    schriftliste[k] := '[#' + wort(vonk) + ']';
+  END;
+END;
 
-procedure filtersetz (hilf:filterzeiger; k:byte);
-begin
-hilf^.next:=filteranfang[k]; filteranfang[k]:=hilf;
-end;
+PROCEDURE filtersetz(hilf : filterzeiger; k : BYTE);
+BEGIN
+  hilf^.Next      := filteranfang[k];
+  filteranfang[k] := hilf;
+END;
 
-procedure filterloesch (k:byte);
-var   hilf:filterzeiger;
-begin
-hilf:=filteranfang[k];
-while hilf<>nil do begin
-   filteranfang[k]:=filteranfang[k]^.next;
-   dispose(hilf,alt);
-   hilf:=filteranfang[k] end;
-filteranfang[k]:=new(endezg,neu(0));
-end;
+PROCEDURE filterloesch(k : BYTE);
+VAR
+  hilf : filterzeiger;
+BEGIN
+  hilf := filteranfang[k];
+  WHILE hilf <> nil DO
+  BEGIN
+    filteranfang[k] := filteranfang[k]^.Next;
+    dispose(hilf, alt);
+    hilf := filteranfang[k];
+  END;
+  filteranfang[k] := new(endezg, neu(0));
+END;
 
-function filterdrin (k:byte):boolean;
-begin
-filterdrin:=(typeof(filteranfang[k]^)<>typeof(ende)) and
-            (typeof(filteranfang[k]^)<>typeof(weiter));
-end;
+FUNCTION filterdrin(k : BYTE) : BOOLEAN;
+BEGIN
+  filterdrin := (typeof(filteranfang[k]^) <> typeof(ende)) AND (typeof(filteranfang[k]^) <> typeof(weiter));
+END;
 
-function filterzeile (k:byte):string;
-var puffer:string;
-    bei:filterzeiger;
-begin
-bei:=filteranfang[k]; puffer:='';
-while bei<>nil do begin insert(bei^.name+' '#26' ',puffer,0); bei:=bei^.next end;
-filterzeile:=puffer+'#'+wort(k);
-end;
+FUNCTION filterzeile(k : BYTE) : STRING;
+VAR
+  puffer : STRING;
+  bei :    filterzeiger;
+BEGIN
+  bei    := filteranfang[k];
+  puffer := '';
+  WHILE bei <> nil DO
+  BEGIN
+    insert(bei^.Name + ' '#26' ', puffer, 0);
+    bei := bei^.Next;
+  END;
+  filterzeile := puffer + '#' + wort(k);
+END;
 
-procedure einheitensetzen (frequenz:extended);
-var   i:word;
-begin
-fre:=frequenz;
-for i:=0 to kan-1 do with belegungsliste[i] do begin grundsetzen(i); handlich end;
-for i:=kan to kan+filtermax-1 do with belegungsliste[i] do begin
-   filteranfang[i]^.einheitgenerieren(belegungsliste[i]);
-   if schwierigda then schwierig
-                  else handlich;
-   end;
-end;
+PROCEDURE einheitensetzen(frequenz : EXTENDED);
+VAR
+  i : WORD;
+BEGIN
+  fre := frequenz;
+  FOR i := 0 TO kan - 1 DO WITH belegungsliste[i] DO
+    BEGIN
+      grundsetzen(i);
+      handlich;
+    END;
+  FOR i := kan TO kan + maxfilters - 1 DO WITH belegungsliste[i] DO
+    BEGIN
+      filteranfang[i]^.einheitgenerieren(belegungsliste[i]);
+      IF schwierigda THEN schwierig
+      ELSE
+        handlich;
+    END;
+END;
 
-procedure oeffne (name:string80; var ko:kopfdaten);
-var   i:longint;
-      hilf:filterzeiger;
-begin
-daff.oeffne(name,ko);
-diffaktor:=ko.freq/fre/2;
-for i:=kan to kan+filtermax-1 do begin
-   hilf:=filteranfang[i];
-   while hilf^.next<>nil do begin
-      hilf^.vorbereitung(ko.freq);
-      hilf:=hilf^.next end;
-   end;
-end;
+PROCEDURE openfileheader(Name : string80; VAR ko : headerdata);
+VAR
+  i :    LONGINT;
+  hilf : filterzeiger;
+BEGIN
+  daff.openfileheader(Name, ko);
+  diffaktor := ko.frequency / fre / 2;
+  FOR i := kan TO kan + maxfilters - 1 DO
+  BEGIN
+    hilf := filteranfang[i];
+    WHILE hilf^.Next <> nil DO
+    BEGIN
+      hilf^.vorbereitung(ko.frequency);
+      hilf := hilf^.Next;
+    END;
+  END;
+END;
 
-function dat (posi:grossint; k:byte):sample;
-begin
-if k<kan then dat:=lesef(posi,k)
-         else dat:=filteranfang[k]^.gefiltert(posi);
-end;
+FUNCTION dat(posi : bigint64; k : BYTE) : sample;
+VAR
+  Result : sample;
+BEGIN
+  IF k < kan THEN
+  BEGIN
+    Result := lesef(posi, k);
+    //writeln(format('dat := lesef(posi, k)=(%d,%d)=%d)', [posi, k, Result]));
+  END
+  ELSE
+  BEGIN
+    Result := filteranfang[k]^.gefiltert(posi);
+    //writeln(format('dat := filteranfang[%d]^.gefiltert(%d)=%d)', [k, posi, Result]));
+  END;
+  dat := Result;
+END;
 
-function extspannung (y:extended; kanal:byte):extended;
-begin
-extspannung:=y*belegungsliste[kanal].faktor
-end;
+FUNCTION extspannung(y : EXTENDED; kanal : BYTE) : EXTENDED;
+VAR
+  Result : EXTENDED;
+  factor : EXTENDED;
+BEGIN
+  factor := belegungsliste[kanal].factor;
+  Result := y * factor;
+  //writeln(format('extspannung := y * belegungsliste[kanal].factor= (%g * %g)=%g', [y, factor, Result]));
+  extspannung := Result;
+END;
 
-function spannung (y:extended; kanal:byte):grossint;
-begin
-spannung:=round(extspannung(y,kanal));
-end;
+FUNCTION spannung(y : EXTENDED; kanal : BYTE) : bigint64;
+BEGIN
+  spannung := round(extspannung(y, kanal));
+END;
 
-function norm (sp:extended; kanal:byte) :extended;
-begin
-norm:=sp/belegungsliste[kanal].faktor;
-end;
+FUNCTION norm(sp : EXTENDED; kanal : BYTE) : EXTENDED;
+BEGIN
+  norm := sp / belegungsliste[kanal].factor;
+END;
 
-procedure streamput (var s:tbufstream);
-var  i:byte;
-begin
-s.write(kan,sizeof(kan)); s.write(fre,sizeof(fre));
-s.write(grund,sizeof(grund)); s.write(schriftliste,sizeof(schriftliste));
-for i:=kan to kan+filtermax-1 do s.put(filteranfang[i]);
-end;
+PROCEDURE streamput(VAR s : tbufstream);
+VAR
+  i : BYTE;
+BEGIN
+  s.Write(kan, sizeof(kan));
+  s.Write(fre, sizeof(fre));
+  s.Write(grund, sizeof(grund));
+  s.Write(schriftliste, sizeof(schriftliste));
+  FOR i := kan TO kan + maxfilters - 1 DO s.put(filteranfang[i]);
+END;
 
-procedure streamget (var s:tbufstream);
-var  i:byte;
-begin
-s.read(kan,sizeof(kan)); s.read(fre,sizeof(fre));
-s.read(grund,sizeof(grund)); s.read(schriftliste,sizeof(schriftliste));
-for i:=kan to kan+filtermax-1 do begin
-   filterloesch(i); dispose(filteranfang[i],alt);
-   filteranfang[i]:=filterzeiger(s.get) end;
-einheitensetzen(fre);
-end;
+PROCEDURE streamget(VAR s : tbufstream);
+VAR
+  i : BYTE;
+BEGIN
+  s.Read(kan, sizeof(kan));
+  s.Read(fre, sizeof(fre));
+  s.Read(grund, sizeof(grund));
+  s.Read(schriftliste, sizeof(schriftliste));
+  FOR i := kan TO kan + maxfilters - 1 DO
+  BEGIN
+    filterloesch(i);
+    dispose(filteranfang[i], alt);
+    filteranfang[i] := filterzeiger(s.get);
+  END;
+  einheitensetzen(fre);
+END;
 
-begin
-registertype(rende);         registertype(rweiter);
-registertype(rinvert);       registertype(roffset);
-registertype(rmalfaktor);    registertype(rstreckung);     registertype(raddition);
-registertype(rkappen);       registertype(rabsolut);       registertype(rint);
-registertype(rsquare);       registertype(rglatt);         registertype(rtiefpass);
-registertype(rhochpass);     registertype(rdiff);          registertype(rverschiebe);
-registertype(rmaxmin);       registertype(rspikefilter);   registertype(reinsdurch);
-registertype(rglint);        registertype(rgllin);         registertype(rkorrelation);
-registertype(rarcsin);       registertype(rarccos);        registertype(rdigital);
-registertype(rwinkel);       registertype(rbetrag);
+BEGIN
+  registertype(rende);
+  registertype(rweiter);
+  registertype(rinvert);
+  registertype(roffset);
+  registertype(rmalfaktor);
+  registertype(rstreckung);
+  registertype(raddition);
+  registertype(rkappen);
+  registertype(rabsolut);
+  registertype(rint);
+  registertype(rsquare);
+  registertype(rglatt);
+  registertype(rtiefpass);
+  registertype(rhochpass);
+  registertype(rdiff);
+  registertype(rverschiebe);
+  registertype(rmaxmin);
+  registertype(rspikefilter);
+  registertype(reinsdurch);
+  registertype(rglint);
+  registertype(rgllin);
+  registertype(rkorrelation);
+  registertype(rarcsin);
+  registertype(rarccos);
+  registertype(rdigital);
+  registertype(rwinkel);
+  registertype(rbetrag);
 
-for i:=1 to maxkanal-1 do filteranfang[i]:=new(endezg,neu(0));
-end.
+  FOR i := 1 TO maxchannelsandfilters - 1 DO filteranfang[i] := new(endezg, neu(0));
+END.

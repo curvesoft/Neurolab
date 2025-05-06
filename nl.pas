@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 / FPC 2.4 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
 {$ifdef fpc} {$mode TP} {$endif}
 
 program neurolab;
@@ -16,7 +16,7 @@ uses  crt, dos,           daff,wavpcm,tulab42,nlrahmen,           grafik,
       objects,                                nlsicht,
                                               nlausw;
 
-const version='9.20';  paramver='8.5'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen und komp84 abschaffen!}
+const version='10.01';  paramver='8.5'; {Beim Erhoehen Diffilter aus nltrigg rausnehmen und komp84 abschaffen!}
       {$IFDEF DPMI}   plattform='DPMI  BP7'; {$ENDIF}
       {$IFDEF MSDOS}  plattform='MSDOS BP7'; {$ENDIF}
       {$IFDEF fpc}    plattform={$I %FPCTARGET%}+' '+{$I %FPCVERSION%}; {$ENDIF}

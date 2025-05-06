@@ -1,4 +1,4 @@
-{ Borland-Pascal 7.0 / FPC 2.4 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
 {$ifdef fpc} {$mode TP} {$endif}
 
 unit  wavpcm;
@@ -11,14 +11,12 @@ unit  wavpcm;
 
 interface
 
-uses  {$ifdef fpc} crt, dos, objects, {$else}
-         {$ifdef windows} wincrt, windos, dostowin,{$else} crt, dos, objects, {$endif}
-      {$endif}
+uses  crt, dos, objects,
       bequem, daff;
 
-procedure kopf (name:fnamestr; var kodaten:kopfdaten);
+procedure kopf (name:fnamestr; var kodaten:headerdata);
 procedure kopfplatzschreiben (name:string80);
-procedure kopfschreiben (name:string80; kodaten:kopfdaten);
+procedure kopfschreiben (name:string80; kodaten:headerdata);
 
 
 implementation
@@ -41,7 +39,7 @@ type  header=packed record
         nchunksize:longint;
         end;
 
-procedure kopf (name:fnamestr; var kodaten:kopfdaten);
+procedure kopf (name:fnamestr; var kodaten:headerdata);
 var   ko:header; sampbytes:word;
       stamp:longint; dt:datetime;
       ch:chunk;
@@ -61,34 +59,34 @@ if ko.riff<>'RIFF' then begin
       blockread(daten,ch,sizeof(chunk)); if lesefehler then exit;
       end;
    with kodaten do begin
-      produzent:='WAV-Datei';
+      producer:='WAV-Datei';
       getftime(daten,stamp); unpacktime(stamp,dt);
-      datum:=wort(dt.day)+'.'+wort(dt.month)+'.'+wort(dt.year);
-      uhrzeit:=wort(dt.hour)+':'+copy('0'+wort(dt.min),1,2);
+      productdate:=wort(dt.day)+'.'+wort(dt.month)+'.'+wort(dt.year);
+      producttime:=wort(dt.hour)+':'+copy('0'+wort(dt.min),1,2);
       sampbytes:=(ko.nbitspersample+7) div 8;
-      kopfbytes:=filepos(daten);
-      anzahl:=ch.nchunksize div (ko.nchannels * sampbytes);
-      freq:=ko.nsamplespersec;
-      case sampbytes of 1:gesdattyp:=4; 2:gesdattyp:=7; else exit end;
-      kennung:=name;
-      nkan:=ko.nchannels;
-      bytes:=nkan*sampbytes;
-      for i:=0 to nkan-1 do with k[i] do begin
+      headerbytes:=filepos(daten);
+      datalength:=ch.nchunksize div (ko.nchannels * sampbytes);
+      frequency:=ko.nsamplespersec;
+      case sampbytes of 1:datatype:=4; 2:datatype:=7; else exit end;
+      protocol:=name;
+      channelnumber:=ko.nchannels;
+      bytes:=channelnumber*sampbytes;
+      for i:=0 to channelnumber-1 do with channels[i] do begin
          nr:=i;
          name:=wort(i)+'.Chan.';
-         faktor1:=100/maxsample;
-         faktor2:=1;
-         einheit:='%';
+         factor1:=100/maxsample;
+         factor2:=1;
+         channelunit:='%';
          offs:=i*sampbytes;
-         dattyp:=gesdattyp;
+         dattyp:=datatype;
          bits:=ko.nbitspersample;
          end;
-      for i:=nkan to maxkan-1 do with k[i] do begin
+      for i:=channelnumber to maxchannels-1 do with channels[i] do begin
          nr:=i;
          name:=' - ';
-         faktor1:=1;
-         faktor2:=1;
-         einheit:='E';
+         factor1:=1;
+         factor2:=1;
+         channelunit:='E';
          offs:=0;
          dattyp:=0;
          end;
@@ -112,7 +110,7 @@ blockwrite(s,ch,sizeof(ch));
 close(s);
 end;
 
-procedure kopfschreiben (name:string80; kodaten:kopfdaten);
+procedure kopfschreiben (name:string80; kodaten:headerdata);
 var   s:file;
       ko:header;
       ch:chunk;
@@ -127,10 +125,10 @@ with ko do begin
    ckid:='fmt ';
    nchunksize:=16;
    wformattag:=1;
-   nchannels:=kodaten.nkan;
-   nsamplespersec:=round(kodaten.freq);
-   navgbytespersec:=round(kodaten.freq*kodaten.nkan*2);
-   nblockalign:=kodaten.nkan*2;
+   nchannels:=kodaten.channelnumber;
+   nsamplespersec:=round(kodaten.frequency);
+   navgbytespersec:=round(kodaten.frequency*kodaten.channelnumber*2);
+   nblockalign:=kodaten.channelnumber*2;
    nbitspersample:=16;
    end;
 with ch do begin

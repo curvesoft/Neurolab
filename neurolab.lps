@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="neurolab.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="86"/>
+        <CursorPos X="69" Y="110"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="bequem.pas"/>
+        <IsPartOfProject Value="True"/>
+        <TopLine Value="68"/>
+        <CursorPos Y="86"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="daff.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="14"/>
+        <TopLine Value="10"/>
+        <CursorPos X="28" Y="21"/>
+        <UsageCount Value="207"/>
+        <Bookmarks Count="2">
+          <Item0 X="12" Y="438" Left="1" Top="418" ID="2"/>
+          <Item1 X="97" Y="661" Left="1" Top="638" ID="3"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="grafik.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="46"/>
+        <CursorPos X="15" Y="27"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="nlausw.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="10"/>
+        <TopLine Value="46"/>
+        <CursorPos X="18" Y="1000"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="nlfiles.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="16"/>
+        <TopLine Value="389"/>
+        <CursorPos X="35" Y="312"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="nlgrafik.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="1272"/>
+        <CursorPos X="26" Y="1288"/>
+        <UsageCount Value="207"/>
+        <Bookmarks Count="2">
+          <Item0 X="6" Y="1267" Left="1" Top="1241"/>
+          <Item1 Y="1115" Left="1" Top="1098" ID="4"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="nlrahmen.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="12"/>
+        <TopLine Value="14"/>
+        <CursorPos X="5" Y="29"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="nlsicht.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="11"/>
+        <TopLine Value="38"/>
+        <CursorPos X="13" Y="61"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="nltrigg.pas"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="2159"/>
+        <CursorPos X="91" Y="2179"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="plotter.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="4"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="tlfiles.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="15"/>
+        <TopLine Value="303"/>
+        <CursorPos X="11" Y="344"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="tlfilter.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="17"/>
+        <TopLine Value="1154"/>
+        <CursorPos X="89" Y="1177"/>
+        <UsageCount Value="207"/>
+        <Bookmarks Count="1">
+          <Item0 X="8" Y="1873" Left="1" Top="1865" ID="1"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="tulab42.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="74"/>
+        <CursorPos X="67" Y="93"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="wavpcm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="19"/>
+        <TopLine Value="66"/>
+        <CursorPos X="18" Y="81"/>
+        <UsageCount Value="207"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\inc\dosh.inc"/>
+        <EditorIndex Value="20"/>
+        <TopLine Value="50"/>
+        <CursorPos X="3" Y="63"/>
+        <UsageCount Value="103"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\rtl-console\src\inc\crth.inc"/>
+        <EditorIndex Value="13"/>
+        <TopLine Value="49"/>
+        <CursorPos X="3" Y="62"/>
+        <UsageCount Value="105"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\rtl\win64\system.pp"/>
+        <UnitName Value="System"/>
+        <EditorIndex Value="1"/>
+        <UsageCount Value="103"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\rtl-extra\src\inc\objects.pp"/>
+        <UnitName Value="Objects"/>
+        <EditorIndex Value="18"/>
+        <TopLine Value="330"/>
+        <CursorPos X="4" Y="346"/>
+        <UsageCount Value="101"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\graph\src\inc\graphh.inc"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="766"/>
+        <CursorPos X="12" Y="781"/>
+        <UsageCount Value="105"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\lazarus\fpc\3.2.2\source\packages\graph\src\inc\graph.inc"/>
+        <EditorIndex Value="7"/>
+        <TopLine Value="1824"/>
+        <CursorPos X="7" Y="1828"/>
+        <UsageCount Value="105"/>
+        <Loaded Value="True"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="nlgrafik.pas"/>
+        <Caret Line="1293" Column="21" TopLine="1253"/>
+      </Position>
+      <Position>
+        <Filename Value="nlgrafik.pas"/>
+        <Caret Line="1295" Column="21" TopLine="1255"/>
+      </Position>
+      <Position>
+        <Filename Value="nlgrafik.pas"/>
+        <Caret Line="1288" Column="26" TopLine="1272"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="86" Column="10" TopLine="62"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="153" Column="44" TopLine="139"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="144" Column="22" TopLine="136"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="146" Column="39" TopLine="214"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="144" Column="20" TopLine="120"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="136" Column="62" TopLine="120"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="144" Column="13" TopLine="120"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="344" Column="11" TopLine="303"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="380" Column="11" TopLine="339"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="388" Column="15" TopLine="347"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="397" Column="17" TopLine="356"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="407" Column="15" TopLine="366"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="416" Column="17" TopLine="376"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="424" Column="11" TopLine="384"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfiles.pas"/>
+        <Caret Line="144" Column="13" TopLine="120"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="763" Column="72" TopLine="751"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="1910" Column="50" TopLine="1870"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="566" Column="47" TopLine="541"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="616" Column="54" TopLine="572"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="621" Column="13" TopLine="580"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="1893" Column="15" TopLine="1852"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="1898" Column="15" TopLine="1857"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="1910" Column="13" TopLine="1869"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="572" Column="82" TopLine="541"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="577" Column="36" TopLine="555"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="1066" Column="36" TopLine="1042"/>
+      </Position>
+      <Position>
+        <Filename Value="tlfilter.pas"/>
+        <Caret Line="1154" Column="16" TopLine="1136"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

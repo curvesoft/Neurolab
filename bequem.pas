@@ -1,7 +1,7 @@
-{ Borland-Pascal 7.0 / FPC 2.4 }
+{ Borland-Pascal 7.0 / FPC 3.2.2 }
 {$ifdef fpc} {$mode TP} {$endif}
 
-unit  bequem;
+UNIT  bequem;
 
 {$IFDEF MSDOS}
 {$A+,B-,E+,F-,G-,I-,N+,O-,P+,T+,V+,X+}
@@ -9,375 +9,493 @@ unit  bequem;
 {$A+,B-,E+,F-,G+,I-,N+,P+,T+,V+,X+}
 {$ENDIF}
 
-interface
+INTERFACE
 
-uses  {$ifdef fpc} crt; {$else} {$ifdef windows} wincrt, dostowin; {$else} crt; {$endif} {$endif}
-const lfcr=#10#13;
+USES  crt;
 
-      ln10=2.302585093;
+CONST
+  lfcr = #10#13;
 
-type  string8=string[8];
-      string20=string[20];               string80=string[80];
-      {$ifdef fpc} grossint=int64; exword=longint; {$else} grossint=longint; exword=word; {$endif}
+  ln10 = 2.302585093;
 
-function min (a,b:grossint) :grossint;
-function max (a,b:grossint) :grossint;
-function mini (a,b:integer) :integer;
-function maxi (a,b:integer) :integer;
-function mine (a,b:extended):extended;
-function maxe (a,b:extended):extended;
+TYPE
+  string8  = STRING[8];
+  string20 = STRING[20];
+  string80 = STRING[80];
+  {$ifdef fpc} bigint64=int64; midint32=longint; {$else} grossint = LONGINT;
+  exword   = WORD; {$endif}
 
-function log (x:extended):extended;
-function pot (x:shortint):grossint;
-function xpot (x:byte):extended;
+FUNCTION min(a, b : bigint64) : bigint64;
+FUNCTION max(a, b : bigint64) : bigint64;
+FUNCTION mini(a, b : INTEGER) : INTEGER;
+FUNCTION maxi(a, b : INTEGER) : INTEGER;
+FUNCTION mine(a, b : EXTENDED) : EXTENDED;
+FUNCTION maxe(a, b : EXTENDED) : EXTENDED;
 
-procedure incex (var a:extended; b:extended);
+FUNCTION log(x : EXTENDED) : EXTENDED;
+FUNCTION pot(x : SHORTINT) : bigint64;
+FUNCTION xpot(x : BYTE) : EXTENDED;
 
-function zahl (zahlstr:string20):grossint;
-function wort (zahl:grossint):string20;
-function extwort (zahl:extended; l,n:byte):string20;
-function extewort (zahl:extended; a,b:byte):string20;
-function extfwort (zahl:extended; a:byte):string20;
-procedure schieben (var puffer:string);
-procedure kompri (var puffer:string);
-function kleinbuchstaben (puffer:string):string;
+PROCEDURE incex(VAR a : EXTENDED; b : EXTENDED);
 
-procedure laerman;
-procedure laermaus;
-procedure piep;
-procedure pieps;
+FUNCTION zahl(zahlstr : string20) : bigint64;
+FUNCTION wort(zahl : bigint64) : string20;
+FUNCTION extwort(zahl : EXTENDED; l, n : BYTE) : string20;
+FUNCTION extewort(zahl : EXTENDED; a, b : BYTE) : string20;
+FUNCTION extfwort(zahl : EXTENDED; a : BYTE) : string20;
+PROCEDURE schieben(VAR puffer : STRING);
+PROCEDURE kompri(VAR puffer : STRING);
+FUNCTION kleinbuchstaben(puffer : STRING) : STRING;
 
-procedure fehler (text:string80);
-function lesefehler:boolean;
+PROCEDURE laerman;
+PROCEDURE laermaus;
+PROCEDURE piep;
+PROCEDURE pieps;
 
-procedure warte;
-procedure zoeger (ms:word);
-function fileschonda (filename:string80) : boolean;
+PROCEDURE fehler(Text : string80);
+FUNCTION lesefehler : BOOLEAN;
 
-function readint (text:string80; sonst:grossint):grossint;
-function readext (text:string80; sonst:extended; l,n:byte):extended;
-function readexte (text:string80; sonst:extended; a,b:byte):extended;
-function readchar (text:string80; sonst:char):char;
-function readcharim (text:string80; sonst:char):char;
-function readstring (text:string80; sonst:string80):string80;
+PROCEDURE warte;
+PROCEDURE zoeger(ms : WORD);
+FUNCTION fileschonda(filename : string80) : BOOLEAN;
 
-implementation
+FUNCTION readint(Text : string80; sonst : bigint64) : bigint64;
+FUNCTION readext(Text : string80; sonst : EXTENDED; l, n : BYTE) : EXTENDED;
+FUNCTION readexte(Text : string80; sonst : EXTENDED; a, b : BYTE) : EXTENDED;
+FUNCTION readchar(Text : string80; sonst : CHAR) : CHAR;
+FUNCTION readcharim(Text : string80; sonst : CHAR) : CHAR;
+FUNCTION readstring(Text : string80; sonst : string80) : string80;
 
-const  laerm:boolean=false;
+IMPLEMENTATION
 
-function min(a,b:grossint) :grossint;
-begin
-if a<b then min:=a else min:=b;
-end;
+CONST
+  laerm : BOOLEAN = False;
 
-function max (a,b:grossint) :grossint;
-begin
-if a<b then max:=b else max:=a;
-end;
+FUNCTION min(a, b : bigint64) : bigint64;
+BEGIN
+  IF a < b THEN min := a
+  ELSE
+    min             := b;
+END;
 
-function mini (a,b:integer) :integer;
-begin
-if a<b then mini:=a else mini:=b;
-end;
+FUNCTION max(a, b : bigint64) : bigint64;
+BEGIN
+  IF a < b THEN max := b
+  ELSE
+    max             := a;
+END;
 
-function maxi (a,b:integer) :integer;
-begin
-if a<b then maxi:=b else maxi:=a;
-end;
+FUNCTION mini(a, b : INTEGER) : INTEGER;
+BEGIN
+  IF a < b THEN mini := a
+  ELSE
+    mini             := b;
+END;
 
-function mine (a,b:extended):extended;
-begin
-if a<b then mine:=a else mine:=b;
-end;
+FUNCTION maxi(a, b : INTEGER) : INTEGER;
+BEGIN
+  IF a < b THEN maxi := b
+  ELSE
+    maxi             := a;
+END;
 
-function maxe (a,b:extended):extended;
-begin
-if a<b then maxe:=b else maxe:=a;
-end;
+FUNCTION mine(a, b : EXTENDED) : EXTENDED;
+BEGIN
+  IF a < b THEN mine := a
+  ELSE
+    mine             := b;
+END;
 
-function log (x:extended):extended;
-begin
-log:=ln(x)/ln10;
-end;
+FUNCTION maxe(a, b : EXTENDED) : EXTENDED;
+BEGIN
+  IF a < b THEN maxe := b
+  ELSE
+    maxe             := a;
+END;
 
-function pot (x:shortint):grossint;
-begin
-pot:=round(exp(x*ln10));
-end;
+FUNCTION log(x : EXTENDED) : EXTENDED;
+BEGIN
+  log := ln(x) / ln10;
+END;
 
-function xpot (x:byte):extended;
-begin
-xpot:=int(exp(x*ln10)+0.5);
-end;
+FUNCTION pot(x : SHORTINT) : bigint64;
+BEGIN
+  pot := round(exp(x * ln10));
+END;
 
-procedure incex (var a:extended; b:extended);
-begin
-a:=a+b;
-end;
+FUNCTION xpot(x : BYTE) : EXTENDED;
+BEGIN
+  xpot := int(exp(x * ln10) + 0.5);
+END;
 
-function zahl (zahlstr:string20):grossint;
-var   zahlint:extended;
-      kont:integer;
-begin
-val(zahlstr,zahlint,kont); zahl:=round(zahlint);
-end;
+PROCEDURE incex(VAR a : EXTENDED; b : EXTENDED);
+BEGIN
+  a := a + b;
+END;
 
-function wort (zahl:grossint):string20;
-var   zahlstr:string20;
-begin
-str(zahl,zahlstr); wort:=zahlstr;
-end;
+FUNCTION zahl(zahlstr : string20) : bigint64;
+VAR
+  zahlint : EXTENDED;
+  kont :    INTEGER;
+BEGIN
+  val(zahlstr, zahlint, kont);
+  zahl := round(zahlint);
+END;
 
-function extwort (zahl:extended; l,n:byte):string20;
-var   zahlstr:string20;
-begin
-str(zahl:l:n,zahlstr); extwort:=zahlstr;
-end;
+FUNCTION wort(zahl : bigint64) : string20;
+VAR
+  zahlstr : string20;
+BEGIN
+  str(zahl, zahlstr);
+  wort := zahlstr;
+END;
 
-function extewort (zahl:extended; a,b:byte):string20;
-var   zahlstr:string20;
-      i:byte;
-begin
-str(zahl:9+a,zahlstr);
-insert(' ',zahlstr,4+a);
-delete(zahlstr,9,4-b);
-for i:=1 to b-1 do if zahlstr[7+a]='0' then begin
-   delete(zahlstr,7+a,1); zahlstr:=zahlstr+' ' end;
-extewort:=zahlstr;
-end;
+FUNCTION extwort(zahl : EXTENDED; l, n : BYTE) : string20;
+VAR
+  zahlstr : string20;
+BEGIN
+  str(zahl : l : n, zahlstr);
+  extwort := zahlstr;
+END;
 
-function extfwort (zahl:extended; a:byte):string20;
-var   zahlstr:string20;
-      i:byte;
-begin
-str(zahl:9+a,zahlstr);
-insert(' ',zahlstr,4+a);
-for i:=1 to 3 do if zahlstr[7+a]='0' then
-   delete(zahlstr,7+a,1);
-extfwort:=zahlstr;
-end;
+FUNCTION extewort(zahl : EXTENDED; a, b : BYTE) : string20;
+VAR
+  zahlstr : string20;
+  i :       BYTE;
+BEGIN
+  str(zahl : 9 + a, zahlstr);
+  insert(' ', zahlstr, 4 + a);
+  Delete(zahlstr, 9, 4 - b);
+  FOR i := 1 TO b - 1 DO IF zahlstr[7 + a] = '0' THEN
+    BEGIN
+      Delete(zahlstr, 7 + a, 1);
+      zahlstr := zahlstr + ' ';
+    END;
+  extewort := zahlstr;
+END;
 
-procedure laerman;
-begin
-laerm:=true;
-end;
+FUNCTION extfwort(zahl : EXTENDED; a : BYTE) : string20;
+VAR
+  zahlstr : string20;
+  i :       BYTE;
+BEGIN
+  str(zahl : 9 + a, zahlstr);
+  insert(' ', zahlstr, 4 + a);
+  FOR i := 1 TO 3 DO IF zahlstr[7 + a] = '0' THEN
+      Delete(zahlstr, 7 + a, 1);
+  extfwort := zahlstr;
+END;
 
-procedure laermaus;
-begin
-laerm:=false;
-end;
+PROCEDURE laerman;
+BEGIN
+  laerm := True;
+END;
 
-procedure piep;
-begin
-{$ifdef windows}
-write(#7#7#7);
-{$else}
-if laerm then begin
-   sound(2000); delay(300);
-   nosound;
-   end;
-{$endif}
-end;
+PROCEDURE laermaus;
+BEGIN
+  laerm := False;
+END;
 
-procedure pieps;
-begin
-{$ifdef windows}
-write(#7);
-{$else}
-if laerm then begin
-   sound(3000); delay(50);
-   nosound;
-   end;
-{$endif}
-end;
+PROCEDURE piep;
+BEGIN
+  IF laerm THEN
+  BEGIN
+    sound(2000);
+    delay(300);
+    nosound;
+  END;
+END;
 
-procedure fehler (text:string80);
-{$ifndef windows} var  textattralt:byte; {$endif}
-begin
-{$ifndef windows} textattralt:=textattr; textcolor(lightred+blink); {$endif}
-write('--> ');
-{$ifndef windows} textattr:=textattralt; {$endif}
-write(text);
-pieps;
-end;
+PROCEDURE pieps;
+BEGIN
+  IF laerm THEN
+  BEGIN
+    sound(3000);
+    delay(50);
+    nosound;
+  END;
+END;
 
-function lesefehler:boolean;
-var   fehl:word;
-begin
-fehl:=ioresult;
-case fehl of
-   0:;
-   2:fehler('File not found.');
-   3:fehler('Path not found.');
-   106:fehler('Invalid numeric format.');
-   152:fehler('Drive not ready.');
-   else fehler('I/O error no:'+wort(fehl)+'.');
-   end;
-lesefehler:=fehl<>0;
-end;
+PROCEDURE fehler(Text : string80);
+VAR
+  textattralt : BYTE;
+BEGIN
+  textattralt := textattr;
+  textcolor(lightred + blink);
+  Write('--> ');
+  textattr := textattralt;
+  Write(Text);
+  pieps;
+END;
 
-function fileschonda (filename:string80) : boolean;
-var test:file;
-begin
-assign(test,filename);
-reset(test,1);
-if ioresult=0 then begin
-   close(test);
-   fileschonda:=true
-   end        else
-   fileschonda:=false;
-end;
+FUNCTION lesefehler : BOOLEAN;
+VAR
+  fehl : WORD;
+BEGIN
+  fehl := ioresult;
+  CASE fehl OF
+    0 : ;
+    2 : fehler('File not found.');
+    3 : fehler('Path not found.');
+    106 : fehler('Invalid numeric format.');
+    152 : fehler('Drive not ready.');
+    ELSE
+      fehler('I/O error no:' + wort(fehl) + '.');
+  END;
+  lesefehler := fehl <> 0;
+END;
 
-procedure warte;
-begin
-write(lfcr,'Continue: <Return> ');
-repeat until readkey in [#13,#27];
-end;
+FUNCTION fileschonda(filename : string80) : BOOLEAN;
+VAR
+  test : FILE;
+BEGIN
+  Assign(test, filename);
+  reset(test, 1);
+  IF ioresult = 0 THEN
+  BEGIN
+    Close(test);
+    fileschonda := True;
+  END
+  ELSE
+    fileschonda := False;
+END;
 
-procedure zoeger (ms:word);
-var   i:word;
-begin
-while keypressed do readkey;
-i:=ms div 100;
-while (i>=1) and not keypressed do begin delay(100); dec(i) end;
-if keypressed then readkey;
-end;
+PROCEDURE warte;
+BEGIN
+  Write(lfcr, 'Continue: <Return> ');
+  REPEAT
+  UNTIL readkey IN [#13, #27];
+END;
 
-function leerz (wieviel:shortint):string80;
-var   puffer:string80;
-begin
-puffer:='';
-for wieviel:=wieviel downto 1 do puffer:=puffer+' ';
-leerz:=puffer;
-end;
+PROCEDURE zoeger(ms : WORD);
+VAR
+  i : WORD;
+BEGIN
+  WHILE keypressed DO readkey;
+  i := ms DIV 100;
+  WHILE (i >= 1) AND NOT keypressed DO
+  BEGIN
+    delay(100);
+    Dec(i);
+  END;
+  IF keypressed THEN readkey;
+END;
 
-procedure readstr (var text:string80);
-var   buchst:char;
-      puffer:string80; len:byte absolute puffer;
-      wx,wy:byte;
-begin
-puffer:=text;
-wy:=wherey; wx:=wherex;
-write(puffer); gotoxy(wx,wy);
-buchst:=readkey;
-if buchst<>#13 then begin
-   if (buchst=#0) and (readkey=#79) then begin
-      write(puffer);
-      buchst:=readkey;
-      end      else begin
-      write(leerz(len)); puffer:=''; gotoxy(wx,wy) end;
-   repeat
-      case buchst of
-        ' '..#255:begin write(buchst); inc(len); puffer[len]:=buchst end;
-        #8:if len>0 then begin dec(len); write(#8' '#8) end;
-        #13:begin writeln; text:=puffer; exit end;
-        #27:begin gotoxy(wx,wy); writeln(text,leerz(len-length(text))); exit end;
-        end;
-      buchst:=readkey;
-    until false;
-    end         else writeln;
-end;
+FUNCTION leerz(wieviel : SHORTINT) : string80;
+VAR
+  puffer : string80;
+BEGIN
+  puffer := '';
+  FOR wieviel := wieviel DOWNTO 1 DO puffer := puffer + ' ';
+  leerz := puffer;
+END;
 
-procedure schieben (var puffer:string);
-begin
-while (puffer<>'') and (puffer[1]=' ') do delete(puffer,1,1);
-while (puffer<>'') and (puffer[length(puffer)]=' ') do delete(puffer,length(puffer),1);
-end;
+PROCEDURE readstr(VAR Text : string80);
+VAR
+  buchst : CHAR;
+  puffer : string80;
+  len :    BYTE absolute puffer;
+  wx, wy : BYTE;
+BEGIN
+  puffer := Text;
+  wy     := wherey;
+  wx     := wherex;
+  Write(puffer);
+  gotoxy(wx, wy);
+  buchst := readkey;
+  IF buchst <> #13 THEN
+  BEGIN
+    IF (buchst = #0) AND (readkey = #79) THEN
+    BEGIN
+      Write(puffer);
+      buchst := readkey;
+    END
+    ELSE
+    BEGIN
+      Write(leerz(len));
+      puffer := '';
+      gotoxy(wx, wy);
+    END;
+    REPEAT
+      CASE buchst OF
+        ' '..#255 : BEGIN
+          Write(buchst);
+          Inc(len);
+          puffer[len] := buchst;
+        END;
+        #8 : IF len > 0 THEN
+          BEGIN
+            Dec(len);
+            Write(#8' '#8);
+          END;
+        #13 : BEGIN
+          writeln;
+          Text := puffer;
+          exit;
+        END;
+        #27 : BEGIN
+          gotoxy(wx, wy);
+          writeln(Text, leerz(len - length(Text)));
+          exit;
+        END;
+      END;
+      buchst := readkey;
+    UNTIL False;
+  END
+  ELSE
+    writeln;
+END;
 
-procedure kompri (var puffer:string);
-var   i:grossint;
-begin
-i:=pos(' ',puffer);
-while i>0 do begin delete(puffer,i,1); i:=pos(' ',puffer) end;
-end;
+PROCEDURE schieben(VAR puffer : STRING);
+BEGIN
+  WHILE (puffer <> '') AND (puffer[1] = ' ') DO Delete(puffer, 1, 1);
+  WHILE (puffer <> '') AND (puffer[length(puffer)] = ' ') DO Delete(puffer, length(puffer), 1);
+END;
 
-function kleinbuchstaben (puffer:string):string;
-const diff=ord('a')-ord('A');
-var   i:word;
-begin
-for i:=1 to length(puffer) do
-   if puffer[i] in ['A'..'Z'] then puffer[i]:=chr(ord(puffer[i])+diff);
-kleinbuchstaben:=puffer;
-end;
+PROCEDURE kompri(VAR puffer : STRING);
+VAR
+  i : bigint64;
+BEGIN
+  i := pos(' ', puffer);
+  WHILE i > 0 DO
+  BEGIN
+    Delete(puffer, i, 1);
+    i := pos(' ', puffer);
+  END;
+END;
+
+FUNCTION kleinbuchstaben(puffer : STRING) : STRING;
+CONST
+  diff = Ord('a') - Ord('A');
+VAR
+  i : WORD;
+BEGIN
+  FOR i := 1 TO length(puffer) DO
+    IF puffer[i] IN ['A'..'Z'] THEN puffer[i] := chr(Ord(puffer[i]) + diff);
+  kleinbuchstaben := puffer;
+END;
 
 
-function readint (text:string80; sonst:grossint):grossint;
-var   puffer:string80;  code:integer;
-      zahl:grossint;
-begin
-puffer:=wort(sonst);
-write(text,': ');
-readstr(puffer); kompri(puffer); val(puffer,zahl,code);
-while (code<>0) do begin
-      puffer:=wort(sonst);
-      fehler('Integer format expected: ');
-      readstr(puffer); kompri(puffer); val(puffer,zahl,code);
-      end;
-readint:=zahl;
-end;
+FUNCTION readint(Text : string80; sonst : bigint64) : bigint64;
+VAR
+  puffer : string80;
+  code :   INTEGER;
+  zahl :   bigint64;
+BEGIN
+  puffer := wort(sonst);
+  Write(Text, ': ');
+  readstr(puffer);
+  kompri(puffer);
+  val(puffer, zahl, code);
+  WHILE (code <> 0) DO
+  BEGIN
+    puffer := wort(sonst);
+    fehler('Integer format expected: ');
+    readstr(puffer);
+    kompri(puffer);
+    val(puffer, zahl, code);
+  END;
+  readint := zahl;
+END;
 
-function readext (text:string80; sonst:extended; l,n:byte):extended;
-var   puffer:string80;  code:integer;
-      zahl:extended;
-begin
-puffer:=extwort(sonst,l,n);
-write(text,': ');
-readstr(puffer); kompri(puffer); val(puffer,zahl,code);
-while (code<>0) do begin
-      puffer:=extwort(sonst,l,n);
-      fehler('Real format expected: ');
-      readstr(puffer); kompri(puffer); val(puffer,zahl,code);
-      end;
-readext:=zahl;
-end;
+FUNCTION readext(Text : string80; sonst : EXTENDED; l, n : BYTE) : EXTENDED;
+VAR
+  puffer : string80;
+  code :   INTEGER;
+  zahl :   EXTENDED;
+BEGIN
+  puffer := extwort(sonst, l, n);
+  Write(Text, ': ');
+  readstr(puffer);
+  kompri(puffer);
+  val(puffer, zahl, code);
+  WHILE (code <> 0) DO
+  BEGIN
+    puffer := extwort(sonst, l, n);
+    fehler('Real format expected: ');
+    readstr(puffer);
+    kompri(puffer);
+    val(puffer, zahl, code);
+  END;
+  readext := zahl;
+END;
 
-function readexte (text:string80; sonst:extended; a,b:byte):extended;
-var   puffer:string80;  code:integer;
-      zahl:extended;
-begin
-puffer:=extewort(sonst,a,b);
-write(text,': ');
-readstr(puffer); kompri(puffer); val(puffer,zahl,code);
-while (code<>0) do begin
-      puffer:=extewort(sonst,a,b);
-      fehler('Real format expected: ');
-      readstr(puffer); kompri(puffer); val(puffer,zahl,code);
-      end;
-readexte:=zahl;
-end;
+FUNCTION readexte(Text : string80; sonst : EXTENDED; a, b : BYTE) : EXTENDED;
+VAR
+  puffer : string80;
+  code :   INTEGER;
+  zahl :   EXTENDED;
+BEGIN
+  puffer := extewort(sonst, a, b);
+  Write(Text, ': ');
+  readstr(puffer);
+  kompri(puffer);
+  val(puffer, zahl, code);
+  WHILE (code <> 0) DO
+  BEGIN
+    puffer := extewort(sonst, a, b);
+    fehler('Real format expected: ');
+    readstr(puffer);
+    kompri(puffer);
+    val(puffer, zahl, code);
+  END;
+  readexte := zahl;
+END;
 
-function readchar (text:string80; sonst:char):char;
-var   puffer,buchstabe:char;
-begin
-write(text,': ',sonst,#8);
-buchstabe:=sonst;
-repeat
-   puffer:=readkey;
-   case puffer of
-      #13:begin readchar:=buchstabe; writeln; exit end;
-      #27:begin readchar:=sonst; writeln(sonst); exit end;
-      ' '..#255:begin buchstabe:=puffer; write(buchstabe,#8) end;
-      end;
-until false;
-end;
+FUNCTION readchar(Text : string80; sonst : CHAR) : CHAR;
+VAR
+  puffer, buchstabe : CHAR;
+BEGIN
+  Write(Text, ': ', sonst, #8);
+  buchstabe := sonst;
+  REPEAT
+    puffer := readkey;
+    CASE puffer OF
+      #13 : BEGIN
+        readchar := buchstabe;
+        writeln;
+        exit;
+      END;
+      #27 : BEGIN
+        readchar := sonst;
+        writeln(sonst);
+        exit;
+      END;
+      ' '..#255 : BEGIN
+        buchstabe := puffer;
+        Write(buchstabe, #8);
+      END;
+    END;
+  UNTIL False;
+END;
 
-function readcharim (text:string80; sonst:char):char;
-var   buchstabe:char;
-begin
-write(text,': ',sonst,#8); buchstabe:=readkey;
-if buchstabe in [#13,#27] then begin readcharim:=sonst; writeln end
-                          else begin
-   readcharim:=buchstabe;
-   if buchstabe in [' '..#255] then writeln(buchstabe);
-   end;
-end;
+FUNCTION readcharim(Text : string80; sonst : CHAR) : CHAR;
+VAR
+  buchstabe : CHAR;
+BEGIN
+  Write(Text, ': ', sonst, #8);
+  buchstabe := readkey;
+  IF buchstabe IN [#13, #27] THEN
+  BEGIN
+    readcharim := sonst;
+    writeln;
+  END
+  ELSE
+  BEGIN
+    readcharim := buchstabe;
+    IF buchstabe IN [' '..#255] THEN writeln(buchstabe);
+  END;
+END;
 
-function readstring (text:string80; sonst:string80):string80;
-var   puffer:string80;
-begin
-write(text,': ');
-puffer:=sonst; readstr(puffer); schieben(puffer);
-readstring:=puffer;
-end;
+FUNCTION readstring(Text : string80; sonst : string80) : string80;
+VAR
+  puffer : string80;
+BEGIN
+  Write(Text, ': ');
+  puffer := sonst;
+  readstr(puffer);
+  schieben(puffer);
+  readstring := puffer;
+END;
 
-end.
+END.

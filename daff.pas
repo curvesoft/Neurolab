@@ -1,7 +1,7 @@
-{ Borland-Pascal 7.0  / FPC 2.0 }
+{ Borland-Pascal 7.0  / FPC 3.2.2 }
 {$ifdef fpc} {$mode TP} {$endif}
 
-unit daff;
+UNIT daff;
 
 {$IFDEF MSDOS}
 {$A+,B-,E+,F-,G-,I-,N+,O-,P+,T-,V+,X-}
@@ -9,476 +9,578 @@ unit daff;
 {$A+,B-,E+,F-,G+,I-,N+,P+,T-,V+,X-}
 {$ENDIF}
 
-interface
+INTERFACE
 
-uses   crt, dos, objects,
-       bequem;
+USES  crt, dos, objects,
+  bequem;
 
-const  samplebit=25;
-       maxsample=(1 shl samplebit)-1;     minsample=-maxsample;
-       sampleoffset=1 shl samplebit;
-       richtung:(vow,ruw,mit)=mit;
-       maxkan=16;
-       dafftypen:set of 0..23 = [4,6,7,19];
+CONST
+  samplebit    = 25;
+  maxsample    = (1 SHL samplebit) - 1;
+  minsample    = -maxsample;
+  sampleoffset = 1 SHL samplebit;
+  richtung : (vow, ruw, mit) = mit;
+  maxchannels  = 16;
+  dafftypen : SET OF 0..23 = [4, 6, 7, 19];
 
-type   sample=minsample..maxsample;
-       kanaldef=packed record
-          nr:word;            name:string[12];
-          offs:byte;          faktor1,faktor2:extended;
-          einheit:string[12];
-          dattyp,bits:byte;
-          end;
-       kopfdaten=packed record
-          produzent:string20;
-          datum:string20;     uhrzeit:string20;   freq:extended;
-          kennung:string[64]; anzahl:grossint;     kopfbytes:grossint;
-          gesdattyp:byte;     bytes:byte;
-          nkan:byte;          k:array[0..maxkan-1] of kanaldef;
-          end;
+TYPE
+  sample = minsample..maxsample;
 
-       tagzeiger=^tag;
-       tagzeigerzeiger=^tagzeiger;
-       tag=object
-          num:word;                     size:word;
-          line:string[60];              next:tagzeiger;
-          procedure nopar;              procedure lesen;
-          procedure zeigen (var hin:text); virtual;
-          procedure einordnen (var ko:kopfdaten); virtual;
-          procedure kaneinordnen (var kl:kanaldef; var ko:kopfdaten); virtual;
-          destructor done; virtual;
-          end;
+  channeldef = PACKED RECORD
+    nr :               WORD;
+    Name :             STRING[12];
+    offs :             BYTE;
+    factor1, factor2 : EXTENDED;
+    channelunit :      STRING[12];
+    dattyp, bits :     BYTE;
+  END;
 
-       contextzeiger=^context;
-       context=object (tag)
-          nested:tagzeiger;
-          procedure zeigen (var hin:text); virtual;
-          procedure einordnen (var ko:kopfdaten); virtual;
-          destructor done; virtual;
-          end;
+  headerdata = PACKED RECORD
+    producer :      string20;
+    productdate :   string20;
+    producttime :   string20;
+    frequency :     EXTENDED;
+    protocol :      STRING[64];
+    datalength :    bigint64;
+    headerbytes :   bigint64;
+    datatype :      BYTE;
+    bytes :         BYTE;
+    channelnumber : BYTE;
+    channels :      ARRAY[0..maxchannels - 1] OF channeldef;
+  END;
 
-       chancontextzeiger=^chancontext;
-       chancontext=object (context)
-          procedure einordnen (var ko:kopfdaten); virtual;
-          end;
+  PTag  = ^Tag;
+  PPTag = ^PTag;
 
-       tbroken=object (tag)
-          w:extended;
-          procedure lesen;
-          end;
+  Tag = OBJECT
+    num :  WORD;
+    size : WORD;
+    line : STRING[60];
+    Next : PTag;
+    PROCEDURE nopar;
+    PROCEDURE Read;
+    PROCEDURE Show(VAR hin : Text); VIRTUAL;
+    PROCEDURE einordnen(VAR ko : headerdata); VIRTUAL;
+    PROCEDURE kaneinordnen(VAR kl : channeldef; VAR ko : headerdata); VIRTUAL;
+    DESTRUCTOR done; VIRTUAL;
+  END;
 
-       tstring=object (tag)
-          st:string;
-          procedure lesen;
-          end;
+  contextzeiger = ^context;
 
-       tname=object (tstring)
-          constructor lesen;
-          procedure kaneinordnen (var kl:kanaldef; var ko:kopfdaten); virtual;
-          end;
-       pname=^tname;
-       tlabel=object (tstring)
-          constructor lesen;
-          procedure einordnen (var ko:kopfdaten); virtual;
-          end;
-       plabel=^tlabel;
-       tdate=object (tag)
-          dt:datetime;
-          constructor lesen;
-          procedure einordnen (var ko:kopfdaten); virtual;
-          end;
-       pdate=^tdate;
+  context = OBJECT(Tag)
+    nested : PTag;
+    PROCEDURE zeigen(VAR hin : Text); VIRTUAL;
+    PROCEDURE einordnen(VAR ko : headerdata); VIRTUAL;
+    DESTRUCTOR done; VIRTUAL;
+  END;
 
-       tival   =object (tag)
-          li:grossint;
-          constructor lesen;
-          end;
-       pival=^tival;
-       tdval   =object (tag)
-          ex:extended;
-          constructor lesen;
-          end;
-       pdval=^tdval;
-       ttval   =object (tag)
-          st:string[255];
-          constructor lesen;
-          end;
-       ptval=^ttval;
+  chancontextzeiger = ^chancontext;
 
-       theader =object (context)
-          constructor lesen;
-          end;
-       pheader=^theader;
-       tftyp   =object (tstring)
-          constructor lesen;
-          procedure einordnen (var ko:kopfdaten); virtual;
-          end;
-       pftyp=^tftyp;
-       tprod   =object (tstring)
-          constructor lesen;
-          procedure einordnen (var ko:kopfdaten); virtual;
-          end;
-       pprod=^tprod;
+  chancontext = OBJECT(context)
+    PROCEDURE einordnen(VAR ko : headerdata); VIRTUAL;
+  END;
 
-       tdatadef=object (context)
-          constructor lesen;
-          end;
-       pdatadef=^tdatadef;
-       tblksize=object (tag)
-          li:grossint;
-          constructor lesen;
-          procedure einordnen (var ko:kopfdaten); virtual;
-          end;
-       pblksize=^tblksize;
+  tbroken = OBJECT(Tag)
+    w : EXTENDED;
+    PROCEDURE lesen;
+  END;
+
+  tstring = OBJECT(Tag)
+    st : STRING;
+    PROCEDURE lesen;
+  END;
+
+  tname = OBJECT(tstring)
+    CONSTRUCTOR lesen;
+    PROCEDURE kaneinordnen(VAR kl : channeldef; VAR ko : headerdata); VIRTUAL;
+  END;
+  pname = ^tname;
+
+  tlabel = OBJECT(tstring)
+    CONSTRUCTOR lesen;
+    PROCEDURE einordnen(VAR ko : headerdata); VIRTUAL;
+  END;
+  plabel = ^tlabel;
+
+  tdate = OBJECT(Tag)
+    dt : datetime;
+    CONSTRUCTOR lesen;
+    PROCEDURE einordnen(VAR ko : headerdata); VIRTUAL;
+  END;
+  pdate = ^tdate;
+
+  tival = OBJECT(Tag)
+    li : bigint64;
+    CONSTRUCTOR lesen;
+  END;
+  pival = ^tival;
+
+  tdval = OBJECT(Tag)
+    ex : EXTENDED;
+    CONSTRUCTOR lesen;
+  END;
+  pdval = ^tdval;
+
+  ttval = OBJECT(Tag)
+    st : STRING[255];
+    CONSTRUCTOR lesen;
+  END;
+  ptval = ^ttval;
+
+  theader = OBJECT(context)
+    CONSTRUCTOR lesen;
+  END;
+  pheader = ^theader;
+
+  tftyp = OBJECT(tstring)
+    CONSTRUCTOR lesen;
+    PROCEDURE einordnen(VAR ko : headerdata); VIRTUAL;
+  END;
+  pftyp = ^tftyp;
+
+  tprod = OBJECT(tstring)
+    CONSTRUCTOR lesen;
+    PROCEDURE einordnen(VAR ko : headerdata); VIRTUAL;
+  END;
+  pprod = ^tprod;
+
+  tdatadef = OBJECT(context)
+    CONSTRUCTOR lesen;
+  END;
+  pdatadef = ^tdatadef;
+
+  tblksize = OBJECT(Tag)
+    li : bigint64;
+    CONSTRUCTOR lesen;
+    PROCEDURE einordnen(VAR ko : headerdata); VIRTUAL;
+  END;
+  pblksize     = ^tblksize;
 (*     tsource =object (tag)
           st:string[80];
           constructor lesen;
           end;
        tsrcoffs=object (tag)
-          li:grossint;
+          li:bigint64;
           constructor lesen;
           end;
        tsrctyp =object (tag)
           ba:(bin,ascii);
           constructor lesen;
           end; *)
-       tnestdatadef=object (chancontext)
-          constructor lesen;
-          procedure einordnen (var ko:kopfdaten); virtual;
-          end;
-       pnestdatadef=^tnestdatadef;
-       tblkoffs=object (tag)
-          bo:byte;
-          constructor lesen;
-          procedure kaneinordnen (var kl:kanaldef; var ko:kopfdaten); virtual;
-          end;
-       pblkoffs=^tblkoffs;
-       tdatat=object (tag)
-          dtp:byte;
-          constructor lesen;
-          procedure kaneinordnen (var kl:kanaldef; var ko:kopfdaten); virtual;
-          end;
-       pdatat=^tdatat;
+  tnestdatadef = OBJECT(chancontext)
+    CONSTRUCTOR lesen;
+    PROCEDURE einordnen(VAR ko : headerdata); VIRTUAL;
+  END;
+  pnestdatadef = ^tnestdatadef;
 
-       tchanl=object (context)
-          kanz:word;
-          constructor lesen;
-          end;
-       pchanl=^tchanl;
-       tnestchanl=object (chancontext)
-          constructor lesen;
-          end;
-       pnestchanl=^tnestchanl;
-       tfactor=object (tbroken)
-          constructor lesen;
-          procedure kaneinordnen (var kl:kanaldef; var ko:kopfdaten); virtual;
-          end;
-       pfactor=^tfactor;
-       tspec=object (tstring)
-          constructor lesen;
-          procedure kaneinordnen (var kl:kanaldef; var ko:kopfdaten); virtual;
-          end;
-       pspec=^tspec;
-       tsfrq=object (tbroken)
-          constructor lesen;
-          procedure kaneinordnen (var kl:kanaldef; var ko:kopfdaten); virtual;
-          end;
-       psfrq=^tsfrq;
+  tblkoffs = OBJECT(Tag)
+    bo : BYTE;
+    CONSTRUCTOR lesen;
+    PROCEDURE kaneinordnen(VAR kl : channeldef; VAR ko : headerdata); VIRTUAL;
+  END;
+  pblkoffs = ^tblkoffs;
 
-       tschluss=object (context)
-          kb,dl:grossint;
-          constructor lesen;
-          procedure einordnen (var ko:kopfdaten); virtual;
-          end;
-       pschluss=^tschluss;
+  tdatat = OBJECT(Tag)
+    dtp : BYTE;
+    CONSTRUCTOR lesen;
+    PROCEDURE kaneinordnen(VAR kl : channeldef; VAR ko : headerdata); VIRTUAL;
+  END;
+  pdatat = ^tdatat;
 
-var    tulabfehler:boolean;
-       hin:text;
+  tchanl = OBJECT(context)
+    kanz : WORD;
+    CONSTRUCTOR lesen;
+  END;
+  pchanl = ^tchanl;
 
-var    daten,seqdaten:file;
-       lesef:function(position:grossint; kanal:byte):sample;
+  tnestchanl = OBJECT(chancontext)
+    CONSTRUCTOR lesen;
+  END;
+  pnestchanl = ^tnestchanl;
 
-procedure kopflesen (name:string80; var anfang:contextzeiger);
-procedure kopfzeigen (anfang:tagzeiger; var hin:text);
-procedure kopf (const name:string80; var ko:kopfdaten);
-procedure oeffne (name:string80; var ko:kopfdaten);
-procedure schliesse;
-procedure ausserbetrieb;
+  tfactor = OBJECT(tbroken)
+    CONSTRUCTOR lesen;
+    PROCEDURE kaneinordnen(VAR kl : channeldef; VAR ko : headerdata); VIRTUAL;
+  END;
+  pfactor = ^tfactor;
 
-procedure seqschreibe (zahl:sample);
-procedure seqschreibeint16 (zahl:sample);
-procedure seqoeffne;
-procedure seqschliesse;
+  tspec = OBJECT(tstring)
+    CONSTRUCTOR lesen;
+    PROCEDURE kaneinordnen(VAR kl : channeldef; VAR ko : headerdata); VIRTUAL;
+  END;
+  pspec = ^tspec;
 
-implementation
+  tsfrq = OBJECT(tbroken)
+    CONSTRUCTOR lesen;
+    PROCEDURE kaneinordnen(VAR kl : channeldef; VAR ko : headerdata); VIRTUAL;
+  END;
+  psfrq = ^tsfrq;
 
-const  {$ifdef fpc} puffermax=1 shl 26; {$else} puffermax=65534; {$endif}
-       zustand:(offen,zu,aus)=zu;
-       leerkd:kanaldef=(nr:0; name:''; offs:0; faktor1:1/maxsample;
-                        faktor2:1; einheit:'V'; dattyp:0; bits:0);
-       leerk:kopfdaten=(produzent:'Unbekannt'; datum:''; uhrzeit:''; freq:0;
-                        kennung:''; anzahl:0; kopfbytes:0; gesdattyp:0; bytes:0; nkan:0);
+  tschluss = OBJECT(context)
+    kb, dl : bigint64;
+    CONSTRUCTOR lesen;
+    PROCEDURE einordnen(VAR ko : headerdata); VIRTUAL;
+  END;
+  pschluss = ^tschluss;
 
-type   pufferbyte=packed array[0..puffermax-1] of byte;
-       daffheader=packed record
-          swg:packed array[1..10] of char; sex:word;
-          version:word;                    flags:word;
-          size:grossint;                    res:array[1..8] of char;
-          end;
+VAR
+  tulabfehler : BOOLEAN;
+  hin :         Text;
 
-var    s:tbufstream;
-       pufferb,seqpufferb:^pufferbyte;
-       pufferbyteanfang,pufferbyteende,seqbytei:grossint;
-       datenweg:boolean;
-       kopfbytelaenge, filebyteende:grossint;
-       kan, blbytes:byte;
-       koffs:array[0..maxkan-1] of byte;
-       kshift:array[0..maxkan-1] of grossint;
+VAR
+  daten, seqdaten : FILE;
+  lesef :           FUNCTION(position : bigint64; kanal : BYTE) : sample;
 
-function lesenil(position:grossint; kanal:byte):sample; far; forward;
-function lese4  (position:grossint; kanal:byte):sample; far; forward;
-function lese6  (position:grossint; kanal:byte):sample; far; forward;
-function lese7  (position:grossint; kanal:byte):sample; far; forward;
-function lese19 (position:grossint; kanal:byte):sample; far; forward;
-const lesefliste:array[0..23] of function(position:grossint; kanal:byte):sample
-          =(lesenil,lesenil,lesenil,lesenil,lese4  ,lesenil,lese6  ,lese7,
-            lesenil,lesenil,lesenil,lesenil,lesenil,lesenil,lesenil,lesenil,
-            lesenil,lesenil,lesenil,lese19 ,lesenil,lesenil,lesenil,lesenil);
+PROCEDURE kopflesen(Name : string80; VAR anfang : contextzeiger);
+PROCEDURE kopfzeigen(anfang : PTag; VAR hin : Text);
+PROCEDURE kopf(CONST Name : string80; VAR ko : headerdata);
+PROCEDURE openfileheader(Name : string80; VAR ko : headerdata);
+PROCEDURE schliesse;
+PROCEDURE ausserbetrieb;
+
+PROCEDURE seqschreibe(zahl : sample);
+PROCEDURE seqschreibeint16(zahl : sample);
+PROCEDURE seqoeffne;
+PROCEDURE seqschliesse;
+
+IMPLEMENTATION
+
+CONST
+  {$ifdef fpc} puffermax=1 shl 26; {$else} puffermax = 65534; {$endif}
+  zustand : (offen, zu, aus) = zu;
+  leerkd : channeldef        = (nr : 0; Name : ''; offs : 0; factor1 : 1 / maxsample;
+    factor2 : 1; channelunit : 'V'; dattyp : 0; bits : 0);
+  leerk : headerdata = (producer : 'Unbekannt'; productdate : ''; producttime : ''; frequency : 0;
+    protocol : ''; datalength : 0; headerbytes : 0; datatype : 0; bytes : 0; channelnumber : 0);
+
+TYPE
+  pufferbyte = PACKED ARRAY[0..puffermax - 1] OF BYTE;
+
+  daffheader = PACKED RECORD
+    swg :     PACKED ARRAY[1..10] OF CHAR;
+    sex :     WORD;
+    version : WORD;
+    flags :   WORD;
+    size :    bigint64;
+    res :     ARRAY[1..8] OF CHAR;
+  END;
+
+VAR
+  s :            tbufstream;
+  pufferb, seqpufferb : ^pufferbyte;
+  pufferbyteanfang, pufferbyteende, seqbytei : bigint64;
+  datenweg :     BOOLEAN;
+  kopfbytelaenge, filebyteende : bigint64;
+  kan, blbytes : BYTE;
+  koffs :        ARRAY[0..maxchannels - 1] OF BYTE;
+  kshift :       ARRAY[0..maxchannels - 1] OF bigint64;
+
+FUNCTION lesenil(position : bigint64; kanal : BYTE) : sample; FAR; FORWARD;
+FUNCTION lese4(position : bigint64; kanal : BYTE) : sample; FAR; FORWARD;
+FUNCTION lese6(position : bigint64; kanal : BYTE) : sample; FAR; FORWARD;
+FUNCTION lese7(position : bigint64; kanal : BYTE) : sample; FAR; FORWARD;
+FUNCTION lese19(position : bigint64; kanal : BYTE) : sample; FAR; FORWARD;
+
+CONST
+  lesefliste : ARRAY[0..23] OF FUNCTION(position : bigint64; kanal : BYTE) : sample =
+    (lesenil, lesenil, lesenil, lesenil, lese4, lesenil, lese6, lese7, lesenil, lesenil,
+    lesenil, lesenil, lesenil, lesenil, lesenil, lesenil, lesenil, lesenil, lesenil, lese19,
+    lesenil, lesenil, lesenil, lesenil);
 
 
-{ Prozeduren }
+  { Prozeduren }
 
-procedure neu (var nowvarvar:tagzeigerzeiger; tg:tagzeiger);
-begin
-nowvarvar^:=tg; nowvarvar:=@nowvarvar^^.next;
-end;
+PROCEDURE neu(VAR nowvarvar : PPTag; tg : PTag);
+BEGIN
+  nowvarvar^ := tg;
+  nowvarvar  := @nowvarvar^^.Next;
+END;
 
-procedure skiptag;
-var   num,dtyp,size,value:word;
-      parm1,lsize,i:longint;
-      parm2:array[1..4] of byte;
-begin
-s.read(num,2); s.read(dtyp,2);
-s.read(size,2);
-s.read(parm1,4); s.read(parm2,4);
-case size of
-   0..8:exit;
-   9..$FFFE:lsize:=size;
-   $FFFF:lsize:=parm1;
-   end;
-for i:=1 to (lsize+1)div 2 do s.read(value,2);
-end;
+PROCEDURE skiptag;
+VAR
+  num, dtyp, size, Value : WORD;
+  parm1, lsize, i : LONGINT;
+  parm2 : ARRAY[1..4] OF BYTE;
+BEGIN
+  s.Read(num, 2);
+  s.Read(dtyp, 2);
+  s.Read(size, 2);
+  s.Read(parm1, 4);
+  s.Read(parm2, 4);
+  CASE size OF
+    0..8 : exit;
+    9..$FFFE : lsize := size;
+    $FFFF : lsize    := parm1;
+  END;
+  FOR i := 1 TO (lsize + 1) DIV 2 DO s.Read(Value, 2);
+END;
 
-procedure skipcontext;
-var   id:word;
-      rest:array[1..14] of byte;
-begin
-s.read(rest,14);
-repeat
-   s.read(id,2);
-   case id of
-      $0001..$7FFF:skiptag;
-      $8000..$FFFE:skipcontext;
-      $FFFF:begin skiptag; exit end;
-      end;
-until false;
-end;
+PROCEDURE skipcontext;
+VAR
+  id :   WORD;
+  rest : ARRAY[1..14] OF BYTE;
+BEGIN
+  s.Read(rest, 14);
+  REPEAT
+    s.Read(id, 2);
+    CASE id OF
+      $0001..$7FFF : skiptag;
+      $8000..$FFFE : skipcontext;
+      $FFFF : BEGIN
+        skiptag;
+        exit;
+      END;
+    END;
+  UNTIL False;
+END;
 
-procedure kopflesen (name:string80; var anfang:contextzeiger);
-label ende;
-var swgstring:packed array[1..10] of char;
-var id:word;
-    nowvar:tagzeigerzeiger;
-    dh:daffheader;
-begin
-swgstring:='SWGBSMBWS'#0;
-tulabfehler:=false;
-s.init(name,stopenread,32000);
-s.read(dh,28);
-if dh.swg<>swgstring then begin
-   fehler('No Turbolab-format file.');
-   tulabfehler:=true;
-   s.done; exit end;
-nowvar:=@anfang;
-repeat
-   s.read(id,2);
-      case id of
-      $0000..$7FFF:tulabfehler:=true;
-      $8002:neu(nowvar,new(pheader,lesen));
-      $8003:neu(nowvar,new(pdatadef,lesen));
-      $8005:neu(nowvar,new(pchanl,lesen));
-      $8006..$FFFE:skipcontext;
-      $8004{Daten}:goto ende;
-      $FFFF:tulabfehler:=true;
-      end;
-   id:=$0000;
-   if tulabfehler then begin
-      fehler('Incorrect Turbolab 4.2 - Header.'); goto ende end;
-until false;
+PROCEDURE kopflesen(Name : string80; VAR anfang : contextzeiger);
+LABEL
+  ende;
+VAR
+  swgstring : PACKED ARRAY[1..10] OF CHAR;
+VAR
+  id :        WORD;
+  nowvar :    PPTag;
+  dh :        daffheader;
+BEGIN
+  swgstring   := 'SWGBSMBWS'#0;
+  tulabfehler := False;
+  s.init(Name, stopenread, 32000);
+  s.Read(dh, 28);
+  IF dh.swg <> swgstring THEN
+  BEGIN
+    fehler('No Turbolab-format file.');
+    tulabfehler := True;
+    s.done;
+    exit;
+  END;
+  nowvar := @anfang;
+  REPEAT
+    s.Read(id, 2);
+    CASE id OF
+      $0000..$7FFF : tulabfehler := True;
+      $8002 : neu(nowvar, new(pheader, lesen));
+      $8003 : neu(nowvar, new(pdatadef, lesen));
+      $8005 : neu(nowvar, new(pchanl, lesen));
+      $8006..$FFFE : skipcontext;
+      $8004{Daten} : GOTO ende;
+      $FFFF : tulabfehler := True;
+    END;
+    id := $0000;
+    IF tulabfehler THEN
+    BEGIN
+      fehler('Incorrect Turbolab 4.2 - Header.');
+      GOTO ende;
+    END;
+  UNTIL False;
 
-ende:neu(nowvar,new(pschluss,lesen)); nowvar^:=nil; s.done;
-end;
+  ende :
+    neu(nowvar, new(pschluss, lesen));
+  nowvar^ := nil;
+  s.done;
+END;
 
-procedure kopfzeigen (anfang:tagzeiger; var hin:text);
-var   wandert:tagzeiger;
-begin
-wandert:=anfang;
-while wandert<>nil do begin
-   wandert^.zeigen(hin);
-   wandert:=wandert^.next end;
-end;
+PROCEDURE kopfzeigen(anfang : PTag; VAR hin : Text);
+VAR
+  wandert : PTag;
+BEGIN
+  wandert := anfang;
+  WHILE wandert <> nil DO
+  BEGIN
+    wandert^.Show(hin);
+    wandert := wandert^.Next;
+  END;
+END;
 
-procedure kopf (const name:string80; var ko:kopfdaten);
-var   anfang,wandert,hilf1,hilf2:tagzeiger;
-      i:byte;
-begin
-kopflesen(name,contextzeiger(anfang));
-if tulabfehler then exit;
-if anfang<>nil then begin
-   wandert:=anfang;
-   while (wandert^.next<>nil) and (typeof(wandert^.next^)<>typeof(tdatadef)) do
-      wandert:=wandert^.next;
-   hilf1:=wandert^.next^.next;
-   hilf2:=anfang;
-   anfang:=wandert^.next;
-   anfang^.next:=hilf2^.next;
-   hilf2^.next:=hilf1;
-   wandert^.next:=hilf2;
-end;
-ko:=leerk;
-for i:=0 to maxkan-1 do ko.k[i]:=leerkd;
-wandert:=anfang;
-while wandert<>nil do begin wandert^.einordnen(ko); wandert:=contextzeiger(wandert^.next) end;
-if (ko.freq=0) or (ko.nkan=0) then tulabfehler:=true;
-if anfang<>nil then dispose(anfang,done);
-end;
+PROCEDURE kopf(CONST Name : string80; VAR ko : headerdata);
+VAR
+  anfang, wandert, hilf1, hilf2 : PTag;
+  i : BYTE;
+BEGIN
+  kopflesen(Name, contextzeiger(anfang));
+  IF tulabfehler THEN exit;
+  IF anfang <> nil THEN
+  BEGIN
+    wandert := anfang;
+    WHILE (wandert^.Next <> nil) AND (typeof(wandert^.Next^) <> typeof(tdatadef)) DO
+      wandert     := wandert^.Next;
+    hilf1         := wandert^.Next^.Next;
+    hilf2         := anfang;
+    anfang        := wandert^.Next;
+    anfang^.Next  := hilf2^.Next;
+    hilf2^.Next   := hilf1;
+    wandert^.Next := hilf2;
+  END;
+  ko := leerk;
+  FOR i := 0 TO maxchannels - 1 DO ko.channels[i] := leerkd;
+  wandert := anfang;
+  WHILE wandert <> nil DO
+  BEGIN
+    wandert^.einordnen(ko);
+    wandert := contextzeiger(wandert^.Next);
+  END;
+  IF (ko.frequency = 0) OR (ko.channelnumber = 0) THEN tulabfehler := True;
+  IF anfang <> nil THEN dispose(anfang, done);
+END;
 
-procedure oeffne (name:string80; var ko:kopfdaten);
-var   i:integer;
-begin
-{if zustand=offen then begin fehler('Offen!'); warte; schliesse end;}
-kopfbytelaenge:=ko.kopfbytes; kan:=ko.nkan;
-blbytes:=ko.bytes;
-for i:=0 to kan do begin
-   koffs[i]:=ko.k[i].offs;
-   kshift[i]:=samplebit-ko.k[i].bits+1;
-   end;
-lesef:=lesefliste[ko.gesdattyp];
-if zustand=aus then exit;
-filebyteende:=ko.anzahl*ko.bytes;
-assign(daten,name);
-{$ifdef fpc}
+PROCEDURE openfileheader(Name : string80; VAR ko : headerdata);
+VAR
+  i : INTEGER;
+BEGIN
+  {if zustand=offen then begin fehler('Offen!'); warte; schliesse end;}
+  kopfbytelaenge := ko.headerbytes;
+  kan            := ko.channelnumber;
+  blbytes        := ko.bytes;
+  FOR i := 0 TO kan DO
+  BEGIN
+    koffs[i]  := ko.channels[i].offs;
+    kshift[i] := samplebit - ko.channels[i].bits + 1;  // 25-12+1=14
+  END;
+  lesef := lesefliste[ko.datatype];
+  IF zustand = aus THEN exit;
+  filebyteende := ko.datalength * ko.bytes;
+  Assign(daten, Name);
+  {$ifdef fpc}
 if zustand=zu then zustand:=offen;
 datenweg:=false;
-{$else}
-reset(daten,1);
-tulabfehler:=ioresult>0;
-if not tulabfehler then begin zustand:=offen; datenweg:=false end
-                   else begin
-   writeln(lfcr); fehler('No access to file "'+name+'".'); warte; datenweg:=true end;
-{$endif}
-pufferbyteanfang:=0;  pufferbyteende:=0;
-end;
+  {$else}
+  reset(daten, 1);
+  tulabfehler := ioresult > 0;
+  IF NOT tulabfehler THEN
+  BEGIN
+    zustand  := offen;
+    datenweg := False;
+  END
+  ELSE
+  BEGIN
+    writeln(lfcr);
+    fehler('No access to file "' + Name + '".');
+    warte;
+    datenweg := True;
+  END;
+  {$endif}
+  pufferbyteanfang := 0;
+  pufferbyteende   := 0;
+END;
 
-procedure seqoeffne;
-begin
-{$ifndef fpc}
-reset(seqdaten,1);
-seek(seqdaten,filesize(seqdaten));
-{$endif}
-new(seqpufferb);
-seqbytei:=-2;
-end;
+PROCEDURE seqoeffne;
+BEGIN
+  {$ifndef fpc}
+  reset(seqdaten, 1);
+  seek(seqdaten, filesize(seqdaten));
+  {$endif}
+  new(seqpufferb);
+  seqbytei := -2;
+END;
 
-procedure seqschliesse;
-var   lenpuffer:exword;
-begin
-{$ifdef fpc}
+PROCEDURE seqschliesse;
+VAR
+  lenpuffer : midint32;
+BEGIN
+  {$ifdef fpc}
 if seqbytei>=0 then begin
    reset(seqdaten,1);
    seek(seqdaten,filesize(seqdaten));
    blockwrite(seqdaten,seqpufferb^,seqbytei+2,lenpuffer);
    close(seqdaten);
    end;
-{$else}
-if seqbytei>=0 then blockwrite(seqdaten,seqpufferb^,seqbytei+2,lenpuffer);
-close(seqdaten);
-{$endif}
-dispose(seqpufferb);
-end;
+  {$else}
+  IF seqbytei >= 0 THEN blockwrite(seqdaten, seqpufferb^, seqbytei + 2, lenpuffer);
+  Close(seqdaten);
+  {$endif}
+  dispose(seqpufferb);
+END;
 
-procedure schliesse;
-begin
-{$ifdef fpc}
+PROCEDURE schliesse;
+BEGIN
+  {$ifdef fpc}
 if zustand=offen then zustand:=zu;
-{$else}
-if zustand=offen then begin
-   close(daten);
-   tulabfehler:=ioresult>0;
-   if tulabfehler then begin
-      zustand:=zu;
-      writeln(lfcr); fehler('No access to data file.'); warte end;
-   end;
-{$endif}
-pufferbyteanfang:=0; pufferbyteende:=0;
-end;
+  {$else}
+  IF zustand = offen THEN
+  BEGIN
+    Close(daten);
+    tulabfehler := ioresult > 0;
+    IF tulabfehler THEN
+    BEGIN
+      zustand := zu;
+      writeln(lfcr);
+      fehler('No access to data file.');
+      warte;
+    END;
+  END;
+  {$endif}
+  pufferbyteanfang := 0;
+  pufferbyteende   := 0;
+END;
 
-procedure ausserbetrieb;
-begin
-dispose(pufferb); zustand:=aus;
-end;
+PROCEDURE ausserbetrieb;
+BEGIN
+  dispose(pufferb);
+  zustand := aus;
+END;
 
-procedure seqschreibe (zahl:sample);
-const  sampleshift=samplebit-12+1;
-var    lenpuffer:exword;
-       intzeiger:^word;
-begin
-inc(seqbytei,2);
-intzeiger:=addr(seqpufferb^[seqbytei]);
-zahl:=(zahl+sampleoffset) shr sampleshift; intzeiger^:=zahl;
-if seqbytei+2>=puffermax-1 then begin
-   {$ifdef fpc}
+PROCEDURE seqschreibe(zahl : sample);
+CONST
+  sampleshift = samplebit - 12 + 1;
+VAR
+  lenpuffer : midint32;
+  intzeiger : ^WORD;
+BEGIN
+  Inc(seqbytei, 2);
+  intzeiger  := addr(seqpufferb^[seqbytei]);
+  zahl       := (zahl + sampleoffset) SHR sampleshift;
+  intzeiger^ := zahl;
+  IF seqbytei + 2 >= puffermax - 1 THEN
+  BEGIN
+    {$ifdef fpc}
    reset(seqdaten,1);
    seek(seqdaten,filesize(seqdaten));
-   {$endif}
-   blockwrite(seqdaten,seqpufferb^,seqbytei+2,lenpuffer);
-   {$ifdef fpc}
+    {$endif}
+    blockwrite(seqdaten, seqpufferb^, seqbytei + 2, lenpuffer);
+    {$ifdef fpc}
    close(seqdaten);
-   {$endif}
-   seqbytei:=-2;
-   end;
-end;
+    {$endif}
+    seqbytei := -2;
+  END;
+END;
 
-procedure seqschreibeint16 (zahl:sample);
-const  sampleshift=samplebit-16+1;
-var    lenpuffer:exword;
-       intzeiger:^integer;
-begin
-inc(seqbytei,2);
-intzeiger:=addr(seqpufferb^[seqbytei]);
-zahl:=(zahl) shr sampleshift; intzeiger^:=zahl;
-if seqbytei+2>=puffermax-1 then begin
-   {$ifdef fpc}
+PROCEDURE seqschreibeint16(zahl : sample);
+CONST
+  sampleshift = samplebit - 16 + 1;
+VAR
+  lenpuffer : midint32;
+  intzeiger : ^INTEGER;
+BEGIN
+  Inc(seqbytei, 2);
+  intzeiger  := addr(seqpufferb^[seqbytei]);
+  zahl       := (zahl) SHR sampleshift;
+  intzeiger^ := zahl;
+  IF seqbytei + 2 >= puffermax - 1 THEN
+  BEGIN
+    {$ifdef fpc}
    reset(seqdaten,1);
    seek(seqdaten,filesize(seqdaten));
-   {$endif}
-   blockwrite(seqdaten,seqpufferb^,seqbytei+2,lenpuffer);
-   {$ifdef fpc}
+    {$endif}
+    blockwrite(seqdaten, seqpufferb^, seqbytei + 2, lenpuffer);
+    {$ifdef fpc}
    close(seqdaten);
-   {$endif}
-   seqbytei:=-2;
-   end;
-end;
+    {$endif}
+    seqbytei := -2;
+  END;
+END;
 
-procedure pufferlesen (byteposition:grossint);
-var   anfang:grossint;
-      lenpuffer:exword;
-begin
-case richtung of
-   vow:anfang:=byteposition;
-   ruw:anfang:=max(byteposition+1-puffermax,0);
-   mit:anfang:=max(byteposition+(1-puffermax) div 2,0);
-   end;
-{$ifdef fpc}
+PROCEDURE pufferlesen(byteposition : bigint64);
+VAR
+  anfang :    bigint64;
+  lenpuffer : midint32;
+BEGIN
+  CASE richtung OF
+    vow : anfang := byteposition;
+    ruw : anfang := max(byteposition + 1 - puffermax, 0);
+    mit : anfang := max(byteposition + (1 - puffermax) DIV 2, 0);
+  END;
+  {$ifdef fpc}
 reset(daten,1);
 tulabfehler:=ioresult>0;
 if not tulabfehler then zustand:=offen
@@ -486,605 +588,716 @@ if not tulabfehler then zustand:=offen
                        writeln(lfcr); fehler('No access to data file.'); warte;
                        datenweg:=true;
                        exit end;
-{$endif}
-seek(daten,anfang+kopfbytelaenge);
-blockread(daten,pufferb^,puffermax,lenpuffer);
-tulabfehler:=ioresult>0;
-if not tulabfehler then begin
-   pufferbyteanfang:=anfang;
-   pufferbyteende:=pufferbyteanfang+lenpuffer end
-                   else begin
-   if not datenweg then begin
-      writeln(lfcr); fehler('No access to data file.'); warte;
-      datenweg:=true;
-      end;
-   pufferbyteanfang:=byteposition;
-   pufferbyteende:=byteposition+puffermax;
-   zustand:=zu;
-   fillchar(pufferb^,sizeof(pufferb^),#0);
-   end;
-{$ifdef fpc}
+  {$endif}
+  seek(daten, anfang + kopfbytelaenge);
+  blockread(daten, pufferb^, puffermax, lenpuffer);
+  tulabfehler := ioresult > 0;
+  IF NOT tulabfehler THEN
+  BEGIN
+    pufferbyteanfang := anfang;
+    pufferbyteende   := pufferbyteanfang + lenpuffer;
+  END
+  ELSE
+  BEGIN
+    IF NOT datenweg THEN
+    BEGIN
+      writeln(lfcr);
+      fehler('No access to data file.');
+      warte;
+      datenweg := True;
+    END;
+    pufferbyteanfang := byteposition;
+    pufferbyteende   := byteposition + puffermax;
+    zustand          := zu;
+    fillchar(pufferb^, sizeof(pufferb^), #0);
+  END;
+  {$ifdef fpc}
 close(daten);
 tulabfehler:=ioresult>0;
 if tulabfehler then begin
    zustand:=zu;
    writeln(lfcr); fehler('No access to data file.'); warte end;
-{$endif}
-end;
+  {$endif}
+END;
 
-function lesenil (position:grossint; kanal:byte):sample;
-begin
-fehler('Internal data type error.');
-lesenil:=0;
-end;
+FUNCTION lesenil(position : bigint64; kanal : BYTE) : sample;
+BEGIN
+  fehler('Internal data type error.');
+  lesenil := 0;
+END;
 
-function lese4 (position:grossint; kanal:byte):sample;
-var   puff:^byte;
-      byteposition:grossint;
-begin
-byteposition:=position*blbytes+koffs[kanal];
-if (byteposition<pufferbyteanfang) or (byteposition>=pufferbyteende) then begin
-   if (byteposition<0) or (byteposition>=filebyteende) then begin
-      lese4:=0; exit end;
-   pufferlesen(byteposition);
-   end;
-puff:=addr(pufferb^[byteposition-pufferbyteanfang]);
-lese4:=puff^ shl kshift[kanal] - sampleoffset;
-end;
+FUNCTION lese4(position : bigint64; kanal : BYTE) : sample;
+VAR
+  puff :         ^BYTE;
+  byteposition : bigint64;
+BEGIN
+  byteposition := position * blbytes + koffs[kanal];
+  IF (byteposition < pufferbyteanfang) OR (byteposition >= pufferbyteende) THEN
+  BEGIN
+    IF (byteposition < 0) OR (byteposition >= filebyteende) THEN
+    BEGIN
+      lese4 := 0;
+      exit;
+    END;
+    pufferlesen(byteposition);
+  END;
+  puff  := addr(pufferb^[byteposition - pufferbyteanfang]);
+  lese4 := puff^ SHL kshift[kanal] - sampleoffset;
+END;
 
-function lese6 (position:grossint; kanal:byte):sample;
-var   puff:^word;
-      byteposition:grossint;
-begin
-byteposition:=position*blbytes+koffs[kanal];
-if (byteposition<pufferbyteanfang) or (byteposition+1>=pufferbyteende) then begin
-   if (byteposition<0) or (byteposition+1>=filebyteende) then begin
-      lese6:=0; exit end;
-   pufferlesen(byteposition);
-   end;
-puff:=addr(pufferb^[byteposition-pufferbyteanfang]);
-lese6:=puff^ shl kshift[kanal] - sampleoffset;
-end;
+FUNCTION lese6(position : bigint64; kanal : BYTE) : sample;
+VAR
+  puff :         ^WORD;
+  byteposition : bigint64;
+BEGIN
+  byteposition := position * blbytes + koffs[kanal];
+  IF (byteposition < pufferbyteanfang) OR (byteposition + 1 >= pufferbyteende) THEN
+  BEGIN
+    IF (byteposition < 0) OR (byteposition + 1 >= filebyteende) THEN
+    BEGIN
+      lese6 := 0;
+      exit;
+    END;
+    pufferlesen(byteposition);
+  END;
+  puff  := addr(pufferb^[byteposition - pufferbyteanfang]);
+  lese6 := puff^ SHL kshift[kanal] - sampleoffset;
+END;
 
-function lese7 (position:grossint; kanal:byte):sample;
-var   puff:^integer; puffl:grossint;
-      byteposition:grossint;
-begin
-byteposition:=position*blbytes+koffs[kanal];
-if (byteposition<pufferbyteanfang) or (byteposition+1>=pufferbyteende) then begin
-   if (byteposition<0) or (byteposition+1>=filebyteende) then begin
-      lese7:=0; exit end;
-   pufferlesen(byteposition);
-   end;
-puff:=addr(pufferb^[byteposition-pufferbyteanfang]);
-lese7:=puff^ shl kshift[kanal];
-end;
+FUNCTION lese7(position : bigint64; kanal : BYTE) : sample;
+VAR
+  puff :         ^INTEGER;
+  puffl :        bigint64;
+  byteposition : bigint64;
+BEGIN
+  byteposition := position * blbytes + koffs[kanal];
+  IF (byteposition < pufferbyteanfang) OR (byteposition + 1 >= pufferbyteende) THEN
+  BEGIN
+    IF (byteposition < 0) OR (byteposition + 1 >= filebyteende) THEN
+    BEGIN
+      lese7 := 0;
+      exit;
+    END;
+    pufferlesen(byteposition);
+  END;
+  puff  := addr(pufferb^[byteposition - pufferbyteanfang]);
+  lese7 := puff^ SHL kshift[kanal];
+END;
 
-function lese19 (position:grossint; kanal:byte):sample;
-const sshift:grossint=10;
-      soffs =sampleoffset shr 4;
-var   puff:^integer;
-      byteposition:grossint;
-begin
-byteposition:=position*blbytes+koffs[kanal];
-if (byteposition<pufferbyteanfang) or (byteposition+1>=pufferbyteende) then begin
-   if (byteposition<0) or (byteposition+1>=filebyteende) then begin
-      lese19:=0; exit end;
-   pufferlesen(byteposition);
-   end;
-puff:=addr(pufferb^[byteposition-pufferbyteanfang]);
-lese19:=puff^ shl sshift - soffs;
-end;
+FUNCTION lese19(position : bigint64; kanal : BYTE) : sample;
+CONST
+  sshift : bigint64 = 10;
+  soffs             = sampleoffset SHR 4;
+VAR
+  puff :         ^INTEGER;
+  byteposition : bigint64;
+BEGIN
+  byteposition := position * blbytes + koffs[kanal];
+  IF (byteposition < pufferbyteanfang) OR (byteposition + 1 >= pufferbyteende) THEN
+  BEGIN
+    IF (byteposition < 0) OR (byteposition + 1 >= filebyteende) THEN
+    BEGIN
+      lese19 := 0;
+      exit;
+    END;
+    pufferlesen(byteposition);
+  END;
+  puff   := addr(pufferb^[byteposition - pufferbyteanfang]);
+  lese19 := puff^ SHL sshift - soffs;
+END;
 
-{ tag }
+{ Tag }
 
-procedure tag.nopar;
-var   parm:array[1..14] of char;
-begin
-s.read(parm,14);
-end;
+PROCEDURE Tag.nopar;
+VAR
+  parm : ARRAY[1..14] OF CHAR;
+BEGIN
+  s.Read(parm, 14);
+END;
 
-procedure tag.lesen;
-var   dtyp:word;
-begin
-s.read(num,2); s.read(dtyp,2); s.read(size,2);
-end;
+PROCEDURE Tag.Read;
+VAR
+  dtyp : WORD;
+BEGIN
+  s.Read(num, 2);
+  s.Read(dtyp, 2);
+  s.Read(size, 2);
+END;
 
-procedure tag.zeigen (var hin:text);
-begin
-writeln(hin,line);
-end;
+PROCEDURE Tag.Show(VAR hin : Text);
+BEGIN
+  writeln(hin, line);
+END;
 
-procedure tag.einordnen (var ko:kopfdaten);
-begin end;
+PROCEDURE Tag.einordnen(VAR ko : headerdata);
+BEGIN
+END;
 
-procedure tag.kaneinordnen (var kl:kanaldef; var ko:kopfdaten);
-begin end;
+PROCEDURE Tag.kaneinordnen(VAR kl : channeldef; VAR ko : headerdata);
+BEGIN
+END;
 
-destructor tag.done;
-begin
-if next<>nil then dispose(next,done);
-end;
+DESTRUCTOR Tag.done;
+BEGIN
+  IF Next <> nil THEN dispose(Next, done);
+END;
 
 { context }
 
-procedure context.einordnen (var ko:kopfdaten);
-var  wandert:tagzeiger;
-begin
-wandert:=nested;
-while wandert<>nil do begin
-   wandert^.einordnen(ko); wandert:=wandert^.next end;
-end;
+PROCEDURE context.einordnen(VAR ko : headerdata);
+VAR
+  wandert : PTag;
+BEGIN
+  wandert := nested;
+  WHILE wandert <> nil DO
+  BEGIN
+    wandert^.einordnen(ko);
+    wandert := wandert^.Next;
+  END;
+END;
 
-procedure context.zeigen(var hin:text);
-var   wandert:tagzeiger;
-begin
-writeln(hin,line);
-wandert:=nested;
-while wandert<>nil do begin
-   wandert^.zeigen(hin);
-   wandert:=wandert^.next end;
-end;
+PROCEDURE context.zeigen(VAR hin : Text);
+VAR
+  wandert : PTag;
+BEGIN
+  writeln(hin, line);
+  wandert := nested;
+  WHILE wandert <> nil DO
+  BEGIN
+    wandert^.Show(hin);
+    wandert := wandert^.Next;
+  END;
+END;
 
-destructor context.done;
-begin
-tag.done;
-if nested<>nil then dispose(nested,done);
-end;
+DESTRUCTOR context.done;
+BEGIN
+  Tag.done;
+  IF nested <> nil THEN dispose(nested, done);
+END;
 
 { chancontext }
 
-procedure chancontext.einordnen (var ko:kopfdaten);
-var   i:byte;
+PROCEDURE chancontext.einordnen(VAR ko : headerdata);
+VAR
+  i : BYTE;
 
-procedure bearbeiten (var kl:kanaldef);
-var  wandert:tagzeiger;
-begin
-wandert:=nested;
-while wandert<>nil do begin
-   wandert^.kaneinordnen(ko.k[i],ko);
-   wandert:=wandert^.next end;
-end;
+  PROCEDURE bearbeiten(VAR kl : channeldef);
+  VAR
+    wandert : PTag;
+  BEGIN
+    wandert := nested;
+    WHILE wandert <> nil DO
+    BEGIN
+      wandert^.kaneinordnen(ko.channels[i], ko);
+      wandert := wandert^.Next;
+    END;
+  END;
 
-begin
-if num=0 then for i:=0 to maxkan-1 do bearbeiten(ko.k[i])
-         else begin
-   i:=0; while (ko.k[i].nr<>num) do inc(i);
-   bearbeiten(ko.k[i]);
-   end;
-end;
+BEGIN
+  IF num = 0 THEN FOR i := 0 TO maxchannels - 1 DO bearbeiten(ko.channels[i])
+  ELSE
+  BEGIN
+    i := 0;
+    WHILE (ko.channels[i].nr <> num) DO Inc(i);
+    bearbeiten(ko.channels[i]);
+  END;
+END;
 
 { tbroken }
 
-procedure tbroken.lesen;
-const b32=2147483648.0;
-      ln2=0.693147180559945;
-var   zahl:record
-        mantissa:longint;
-        exponent:integer;
-        rest:array[1..2] of byte;
-        end;
-begin
-tag.lesen;
-s.read(zahl,8);
-w:=(zahl.mantissa/b32)*exp(ln2*zahl.exponent);
-end;
+PROCEDURE tbroken.lesen;
+CONST
+  b32 = 2147483648.0;
+  ln2 = 0.693147180559945;
+VAR
+  zahl : RECORD
+    mantissa : LONGINT;
+    exponent : INTEGER;
+    rest :     ARRAY[1..2] OF BYTE;
+    END;
+BEGIN
+  Tag.Read;
+  s.Read(zahl, 8);
+  w := (zahl.mantissa / b32) * exp(ln2 * zahl.exponent);
+END;
 
 
 { tstring }
 
-procedure tstring.lesen;
-var   parm:array[1..8] of char;
-begin
-tag.lesen;
-s.read(parm,8);
-case size of
-   0..8:st:=parm;
-   9..255:s.read(st[1],((size +1) div 2)*2);
-   end;
-st[0]:=chr(size);
-end;
+PROCEDURE tstring.lesen;
+VAR
+  parm : ARRAY[1..8] OF CHAR;
+BEGIN
+  Tag.Read;
+  s.Read(parm, 8);
+  CASE size OF
+    0..8 : st := parm;
+    9..255 : s.Read(st[1], ((size + 1) DIV 2) * 2);
+  END;
+  st[0] := chr(size);
+END;
 
 { tname }
 
-constructor tname.lesen;
-begin
-tstring.lesen;
-line:='    Name: '+st;
-end;
+CONSTRUCTOR tname.lesen;
+BEGIN
+  tstring.lesen;
+  line := '    Name: ' + st;
+END;
 
-procedure tname.kaneinordnen (var kl:kanaldef; var ko:kopfdaten);
-begin
-kl.name:=st;
-end;
+PROCEDURE tname.kaneinordnen(VAR kl : channeldef; VAR ko : headerdata);
+BEGIN
+  kl.Name := st;
+END;
 
 { tlabel }
 
-constructor tlabel.lesen;
-begin
-tstring.lesen;
-line:='    Description: '+st;
-end;
+CONSTRUCTOR tlabel.lesen;
+BEGIN
+  tstring.lesen;
+  line := '    Description: ' + st;
+END;
 
-procedure tlabel.einordnen (var ko:kopfdaten);
-begin
-ko.kennung:=st;
-end;
+PROCEDURE tlabel.einordnen(VAR ko : headerdata);
+BEGIN
+  ko.protocol := st;
+END;
 
 { tdate }
 
-constructor tdate.lesen;
-var   zeitinfo:record
-        j:word;  t:byte;  mo:byte;
-        m:byte;  s:byte;
-        unwichtig:word;
-        end;
-begin
-tag.lesen;
-case num of
-   0:begin
-       s.read(zeitinfo,8);
-       with zeitinfo,dt do begin
-          day:=t; month:=mo; year:=j;
-          hour:=s; min:=m; sec:=0;
-          end;
-       end;
-   1:{4-Byte-UNIX-Format, sek seit 1.1.1970 0:00:00};
-   end;
-with dt do
-   line:='    Date: '+wort(day)+'.'+wort(month)+'.'+wort(year)+' Time: '
-         +wort(hour)+':'+wort(min)+':'+wort(sec);
-end;
+CONSTRUCTOR tdate.lesen;
+VAR
+  zeitinfo : RECORD
+    j :         WORD;
+    t :         BYTE;
+    mo :        BYTE;
+    m :         BYTE;
+    s :         BYTE;
+    unwichtig : WORD;
+    END;
+BEGIN
+  Tag.Read;
+  CASE num OF
+    0 : BEGIN
+      s.Read(zeitinfo, 8);
+      WITH zeitinfo, dt DO
+      BEGIN
+        day   := t;
+        month := mo;
+        year  := j;
+        hour  := s;
+        min   := m;
+        sec   := 0;
+      END;
+    END;
+    1 :{4-Byte-UNIX-Format, sek seit 1.1.1970 0:00:00};
+  END;
+  WITH dt DO
+    line := '    Date: ' + wort(day) + '.' + wort(month) + '.' + wort(year) + ' Time: ' +
+      wort(hour) + ':' + wort(min) + ':' + wort(sec);
+END;
 
-procedure tdate.einordnen (var ko:kopfdaten);
-begin
-with dt do begin
-   ko.datum:=wort(day)+'.'+wort(month)+'.'+wort(year);
-   ko.uhrzeit:=wort(hour)+':'+wort(min)+':'+wort(sec);
-   end;
-end;
+PROCEDURE tdate.einordnen(VAR ko : headerdata);
+BEGIN
+  WITH dt DO
+  BEGIN
+    ko.productdate := wort(day) + '.' + wort(month) + '.' + wort(year);
+    ko.producttime := wort(hour) + ':' + wort(min) + ':' + wort(sec);
+  END;
+END;
 
 { tival }
 
-constructor tival.lesen;
-begin
-tag.lesen;
-end;
+CONSTRUCTOR tival.lesen;
+BEGIN
+  Tag.Read;
+END;
 
 { tdval }
 
-constructor tdval.lesen;
-begin
-tag.lesen;
-end;
+CONSTRUCTOR tdval.lesen;
+BEGIN
+  Tag.Read;
+END;
 
 { ttval }
 
-constructor ttval.lesen;
-begin
-tag.lesen;
-end;
+CONSTRUCTOR ttval.lesen;
+BEGIN
+  Tag.Read;
+END;
 
 { theader }
 
-constructor theader.lesen;
-var   id:word; nowvar:tagzeigerzeiger;
-      parms:array[1..8] of char;
-begin
-tag.lesen;
-line:='Header:';
-s.read(parms,8);
-nowvar:=@nested;
-repeat
-   s.read(id,2);
-   case id of
-      $0001:neu(nowvar,new(pname,lesen));
-      $0002:neu(nowvar,new(plabel,lesen));
-      $0003:neu(nowvar,new(pdate,lesen));
-      $0080:neu(nowvar,new(pftyp,lesen));
-      $0081:neu(nowvar,new(pprod,lesen));
-      $0004..$007F,$0082..$7FFF:skiptag;
-      $8000..$FFFE:skipcontext;
-      $FFFF:begin nopar; nowvar^:=nil; exit end;
-      end;
-until false;
-end;
+CONSTRUCTOR theader.lesen;
+VAR
+  id :     WORD;
+  nowvar : PPTag;
+  parms :  ARRAY[1..8] OF CHAR;
+BEGIN
+  Tag.Read;
+  line := 'Header:';
+  s.Read(parms, 8);
+  nowvar := @nested;
+  REPEAT
+    s.Read(id, 2);
+    CASE id OF
+      $0001 : neu(nowvar, new(pname, lesen));
+      $0002 : neu(nowvar, new(plabel, lesen));
+      $0003 : neu(nowvar, new(pdate, lesen));
+      $0080 : neu(nowvar, new(pftyp, lesen));
+      $0081 : neu(nowvar, new(pprod, lesen));
+      $0004..$007F, $0082..$7FFF : skiptag;
+      $8000..$FFFE : skipcontext;
+      $FFFF : BEGIN
+        nopar;
+        nowvar^ := nil;
+        exit;
+      END;
+    END;
+  UNTIL False;
+END;
 
 { tftyp }
 
-constructor tftyp.lesen;
-begin
-tstring.lesen;
-line:='    Filetyp: '+st;
-end;
+CONSTRUCTOR tftyp.lesen;
+BEGIN
+  tstring.lesen;
+  line := '    Filetyp: ' + st;
+END;
 
-procedure tftyp.einordnen (var ko:kopfdaten);
-begin
-if num<>0 then begin
-   tulabfehler:=true;
-   fehler('No "Sampled Data File" but "'+st+'".');
-   end;
-end;
+PROCEDURE tftyp.einordnen(VAR ko : headerdata);
+BEGIN
+  IF num <> 0 THEN
+  BEGIN
+    tulabfehler := True;
+    fehler('No "Sampled Data File" but "' + st + '".');
+  END;
+END;
 
 { tprod }
 
-constructor tprod.lesen;
-begin
-tstring.lesen;
-line:='    Producer of file: '+st;
-end;
+CONSTRUCTOR tprod.lesen;
+BEGIN
+  tstring.lesen;
+  line := '    Producer of file: ' + st;
+END;
 
-procedure tprod.einordnen (var ko:kopfdaten);
-begin
-ko.produzent:=st;
-end;
+PROCEDURE tprod.einordnen(VAR ko : headerdata);
+BEGIN
+  ko.producer := st;
+END;
 
 { tdatadef }
 
-constructor tdatadef.lesen;
-var   id:word; nowvar:tagzeigerzeiger;
-      parms:array[1..8] of char;
-begin
-tag.lesen;
-line:='Data definition:';
-s.read(parms,8);
-nowvar:=@nested;
-repeat
-   s.read(id,2);
-   case id of
-      $0098:neu(nowvar,new(pblksize,lesen));
-      $0000..$0097,$0099..$7FFF:skiptag;
-      $8003:neu(nowvar,new(pnestdatadef,lesen));
-      $8000..$8002,$8004..$FFFE:skipcontext;
-      $FFFF:begin nopar; nowvar^:=nil; exit end;
-      end;
-if tulabfehler then exit;
-until false;
-end;
+CONSTRUCTOR tdatadef.lesen;
+VAR
+  id :     WORD;
+  nowvar : PPTag;
+  parms :  ARRAY[1..8] OF CHAR;
+BEGIN
+  Tag.Read;
+  line := 'Data definition:';
+  s.Read(parms, 8);
+  nowvar := @nested;
+  REPEAT
+    s.Read(id, 2);
+    CASE id OF
+      $0098 : neu(nowvar, new(pblksize, lesen));
+      $0000..$0097, $0099..$7FFF : skiptag;
+      $8003 : neu(nowvar, new(pnestdatadef, lesen));
+      $8000..$8002, $8004..$FFFE : skipcontext;
+      $FFFF : BEGIN
+        nopar;
+        nowvar^ := nil;
+        exit;
+      END;
+    END;
+    IF tulabfehler THEN exit;
+  UNTIL False;
+END;
 
 { tblksize }
 
-constructor tblksize.lesen;
-var   parm:array [1..4] of byte;
-begin
-tag.lesen;
-s.read(li,4);
-s.read(parm,4);
-line:='    Block size: '+wort(li);
-end;
+CONSTRUCTOR tblksize.lesen;
+VAR
+  parm : ARRAY [1..4] OF BYTE;
+BEGIN
+  Tag.Read;
+  s.Read(li, 4);
+  s.Read(parm, 4);
+  line := '    Block size: ' + wort(li);
+END;
 
-procedure tblksize.einordnen (var ko:kopfdaten);
-begin
-ko.bytes:=li;
-end;
+PROCEDURE tblksize.einordnen(VAR ko : headerdata);
+BEGIN
+  ko.bytes := li;
+END;
 
 (* noch nicht benutzt:
 { tsource }
 
 constructor tsource.lesen;
 begin
-tag.lesen;
+Tag.read;
 end;
 
 { tsrcoffs }
 
 constructor tsrcoffs.lesen;
 begin
-tag.lesen;
+Tag.read;
 end;
 
 { tsrctyp }
 
 constructor tsrctyp.lesen;
 begin
-tag.lesen;
+Tag.read;
 end; *)
 
 { tnestdatadef }
 
-constructor tnestdatadef.lesen;
-var   id:word; nowvar:tagzeigerzeiger;
-      parms:array[1..8] of char;
-begin
-tag.lesen;
-line:='  Channel data definition ['+wort(num)+']:';
-s.read(parms,8);
-nowvar:=@nested;
-repeat
-   s.read(id,2);
-   case id of
-      $00A0:neu(nowvar,new(pblkoffs,lesen));
-      $00A2:neu(nowvar,new(pdatat,lesen));
-      $0000..$009F,$00A1,$00A3..$7FFF:skiptag;
-      $8000..$FFFE:skipcontext;
-      $FFFF:begin nopar; nowvar^:=nil; exit end;
-      end;
-if tulabfehler then exit;
-until false;
-end;
+CONSTRUCTOR tnestdatadef.lesen;
+VAR
+  id :     WORD;
+  nowvar : PPTag;
+  parms :  ARRAY[1..8] OF CHAR;
+BEGIN
+  Tag.Read;
+  line := '  Channel data definition [' + wort(num) + ']:';
+  s.Read(parms, 8);
+  nowvar := @nested;
+  REPEAT
+    s.Read(id, 2);
+    CASE id OF
+      $00A0 : neu(nowvar, new(pblkoffs, lesen));
+      $00A2 : neu(nowvar, new(pdatat, lesen));
+      $0000..$009F, $00A1, $00A3..$7FFF : skiptag;
+      $8000..$FFFE : skipcontext;
+      $FFFF : BEGIN
+        nopar;
+        nowvar^ := nil;
+        exit;
+      END;
+    END;
+    IF tulabfehler THEN exit;
+  UNTIL False;
+END;
 
-procedure tnestdatadef.einordnen (var ko:kopfdaten);
-var  wandert:tagzeiger;
-     kd:kanaldef;
-begin
-wandert:=nested;
-kd:=leerkd;
-while wandert<>nil do begin
-   wandert^.kaneinordnen(kd,ko);
-   wandert:=wandert^.next end;
-kd.nr:=num;
-ko.k[kd.offs div 2]:=kd;
-end;
+PROCEDURE tnestdatadef.einordnen(VAR ko : headerdata);
+VAR
+  wandert : PTag;
+  kd :      channeldef;
+BEGIN
+  wandert := nested;
+  kd      := leerkd;
+  WHILE wandert <> nil DO
+  BEGIN
+    wandert^.kaneinordnen(kd, ko);
+    wandert := wandert^.Next;
+  END;
+  kd.nr := num;
+  ko.channels[kd.offs DIV 2] := kd;
+END;
 
 { tblkoffs }
 
-constructor tblkoffs.lesen;
-var   parm:array [1..4] of byte;
-      blkoffs:longint;
-begin
-tag.lesen;
-s.read(blkoffs,4); bo:=blkoffs;
-s.read(parm,4);
-line:='    Block offset: '+wort(bo);
-end;
+CONSTRUCTOR tblkoffs.lesen;
+VAR
+  parm :    ARRAY [1..4] OF BYTE;
+  blkoffs : LONGINT;
+BEGIN
+  Tag.Read;
+  s.Read(blkoffs, 4);
+  bo := blkoffs;
+  s.Read(parm, 4);
+  line := '    Block offset: ' + wort(bo);
+END;
 
-procedure tblkoffs.kaneinordnen (var kl:kanaldef; var ko:kopfdaten);
-begin
-kl.offs:=bo;
-end;
+PROCEDURE tblkoffs.kaneinordnen(VAR kl : channeldef; VAR ko : headerdata);
+BEGIN
+  kl.offs := bo;
+END;
 
 { tdatat }
 
-constructor tdatat.lesen;
-const dtyp:array [0..23] of string[10]=
-        ('unknown','unknown','Char','Char','ñ Byte','Byte',
-         'ñ word','word','ñ long','long','ñ real4','real4','ñ real8','real8',
-         'ñ broken','broken','ñ bit8','bit8','ñ bit16','bit16',
-         '','','','');
-var   parm:array [1..4] of byte;
-      datat:longint;
-begin
-tag.lesen;
-s.read(datat,4); dtp:=datat mod 256;
-s.read(parm,4);
-line:='    Data type: '+dtyp[dtp];
-end;
+CONSTRUCTOR tdatat.lesen;
+CONST
+  dtyp : ARRAY [0..23] OF STRING[10] =
+    ('unknown', 'unknown', 'Char', 'Char', 'ñ Byte', 'Byte', 'ñ word', 'word', 'ñ long',
+    'long', 'ñ real4', 'real4', 'ñ real8', 'real8', 'ñ broken', 'broken', 'ñ bit8', 'bit8',
+    'ñ bit16', 'bit16', '', '', '', '');
+VAR
+  parm :  ARRAY [1..4] OF BYTE;
+  datat : LONGINT;
+BEGIN
+  Tag.Read;
+  s.Read(datat, 4);
+  dtp := datat MOD 256;
+  s.Read(parm, 4);
+  line := '    Data type: ' + dtyp[dtp];
+END;
 
-procedure tdatat.kaneinordnen (var kl:kanaldef; var ko:kopfdaten);
-begin
-kl.dattyp:=dtp; kl.bits:=12;
-if ko.gesdattyp=0 then ko.gesdattyp:=dtp;
-if not (dtp in dafftypen) then begin
-   tulabfehler:=true;
-   fehler('Unknown data format ('+wort(dtp)+')'); writeln;
-   end;
-if dtp<>ko.gesdattyp then begin
-   tulabfehler:=true;
-   fehler('Mixed data types');
-   end;
-end;
+PROCEDURE tdatat.kaneinordnen(VAR kl : channeldef; VAR ko : headerdata);
+BEGIN
+  kl.dattyp := dtp;
+  kl.bits   := 12;
+  IF ko.datatype = 0 THEN ko.datatype := dtp;
+  IF NOT (dtp IN dafftypen) THEN
+  BEGIN
+    tulabfehler := True;
+    fehler('Unknown data format (' + wort(dtp) + ')');
+    writeln;
+  END;
+  IF dtp <> ko.datatype THEN
+  BEGIN
+    tulabfehler := True;
+    fehler('Mixed data types');
+  END;
+END;
 
 { tchanl }
 
-constructor tchanl.lesen;
-var   id:word; nowvar:tagzeigerzeiger;
-      parms:array[1..6] of char;
-begin
-tag.lesen;
-line:='Channel protocol:';
-s.read(kanz,2); { Anzahl der Kanaele: Leider meist =0}
-s.read(parms,6);
-nowvar:=@nested;
-repeat
-   s.read(id,2);
-   case id of
-      $0000..$7FFF:skiptag;
-      $8005:neu(nowvar,new(pnestchanl,lesen));
-      $8000..$8004,$8006..$FFFE:skipcontext;
-      $FFFF:begin nopar; nowvar^:=nil; exit end;
-      end;
-if tulabfehler then exit;
-until false;
-end;
+CONSTRUCTOR tchanl.lesen;
+VAR
+  id :     WORD;
+  nowvar : PPTag;
+  parms :  ARRAY[1..6] OF CHAR;
+BEGIN
+  Tag.Read;
+  line := 'Channel protocol:';
+  s.Read(kanz, 2); { Anzahl der Kanaele: Leider meist =0}
+  s.Read(parms, 6);
+  nowvar := @nested;
+  REPEAT
+    s.Read(id, 2);
+    CASE id OF
+      $0000..$7FFF : skiptag;
+      $8005 : neu(nowvar, new(pnestchanl, lesen));
+      $8000..$8004, $8006..$FFFE : skipcontext;
+      $FFFF : BEGIN
+        nopar;
+        nowvar^ := nil;
+        exit;
+      END;
+    END;
+    IF tulabfehler THEN exit;
+  UNTIL False;
+END;
 
 { tnestchanl }
 
-constructor tnestchanl.lesen;
-var   id:word; nowvar:tagzeigerzeiger;
-      parms:array[1..8] of char;
-begin
-tag.lesen;
-line:='  Channel definition ['+wort(num)+']:';
-s.read(parms,8);
-nowvar:=@nested;
-repeat
-   s.read(id,2);
-   case id of
-      $0001:neu(nowvar,new(pname,lesen));
-      $0082:neu(nowvar,new(pfactor,lesen));
-      $0083:skiptag;
-      $0084:neu(nowvar,new(pspec,lesen));
-      $008A:neu(nowvar,new(psfrq,lesen));
-      $0000,$0002..$0081,$0085..$0089,$008B..$7FFF:skiptag;
-      $8000..$FFFE:skipcontext;
-      $FFFF:begin nopar; nowvar^:=nil; exit end;
-      end;
-until false;
-end;
+CONSTRUCTOR tnestchanl.lesen;
+VAR
+  id :     WORD;
+  nowvar : PPTag;
+  parms :  ARRAY[1..8] OF CHAR;
+BEGIN
+  Tag.Read;
+  line := '  Channel definition [' + wort(num) + ']:';
+  s.Read(parms, 8);
+  nowvar := @nested;
+  REPEAT
+    s.Read(id, 2);
+    CASE id OF
+      $0001 : neu(nowvar, new(pname, lesen));
+      $0082 : neu(nowvar, new(pfactor, lesen));
+      $0083 : skiptag;
+      $0084 : neu(nowvar, new(pspec, lesen));
+      $008A : neu(nowvar, new(psfrq, lesen));
+      $0000, $0002..$0081, $0085..$0089, $008B..$7FFF : skiptag;
+      $8000..$FFFE : skipcontext;
+      $FFFF : BEGIN
+        nopar;
+        nowvar^ := nil;
+        exit;
+      END;
+    END;
+  UNTIL False;
+END;
 
 { tfactor }
 
-constructor tfactor.lesen;
-begin
-tbroken.lesen;
-line:='    Axis: '+wort(num)+' mit Faktor: '+extewort(w,3,2);
-end;
+CONSTRUCTOR tfactor.lesen;
+BEGIN
+  tbroken.lesen;
+  line := '    Axis: ' + wort(num) + ' mit Faktor: ' + extewort(w, 3, 2);
+END;
 
-procedure tfactor.kaneinordnen (var kl:kanaldef; var ko:kopfdaten);
-begin
-case num of
-   0:ko.freq:=1/w;
-   1:kl.faktor1:=w/maxsample*(1 shl 11);
-   2:kl.faktor2:=w;
-   end;
-end;
+PROCEDURE tfactor.kaneinordnen(VAR kl : channeldef; VAR ko : headerdata);
+BEGIN
+  CASE num OF
+    0 : ko.frequency := 1 / w;
+    1 : kl.factor1   := w / maxsample * (1 SHL 11);
+    2 : kl.factor2   := w;
+  END;
+END;
 
 { tspec }
 
-constructor tspec.lesen;
-var   parm:array [1..4] of byte;
-      blkoffs:longint;
-begin
-tstring.lesen;
-line:='    Axis: '+wort(num)+' mit Einheit: '+st;
-end;
+CONSTRUCTOR tspec.lesen;
+VAR
+  parm :    ARRAY [1..4] OF BYTE;
+  blkoffs : LONGINT;
+BEGIN
+  tstring.lesen;
+  line := '    Axis: ' + wort(num) + ' mit Einheit: ' + st;
+END;
 
-procedure tspec.kaneinordnen (var kl:kanaldef; var ko:kopfdaten);
-begin
-if num=2 then begin
-   if st='Volt' then kl.einheit:='V'
-                else kl.einheit:=st;
-   end;
-end;
+PROCEDURE tspec.kaneinordnen(VAR kl : channeldef; VAR ko : headerdata);
+BEGIN
+  IF num = 2 THEN
+  BEGIN
+    IF st = 'Volt' THEN kl.channelunit := 'V'
+    ELSE
+      kl.channelunit := st;
+  END;
+END;
 
 { tsfrq }
 
-constructor tsfrq.lesen;
-begin
-tbroken.lesen;
-line:='    Frequency: '+extwort(w,8,1);
-end;
+CONSTRUCTOR tsfrq.lesen;
+BEGIN
+  tbroken.lesen;
+  line := '    Frequency: ' + extwort(w, 8, 1);
+END;
 
-procedure tsfrq.kaneinordnen (var kl:kanaldef; var ko:kopfdaten);
-begin
-ko.freq:=w;
-end;
+PROCEDURE tsfrq.kaneinordnen(VAR kl : channeldef; VAR ko : headerdata);
+BEGIN
+  ko.frequency := w;
+END;
 
 { tschluss }
 
-constructor tschluss.lesen;
-begin
-nopar;
-kb:=s.getpos;
-dl:=(s.getsize-kb) div 2;
-nested:=nil;
-line:='    Total header: '+wort(kb)+' Size: '+wort(dl);
-end;
+CONSTRUCTOR tschluss.lesen;
+BEGIN
+  nopar;
+  kb     := s.getpos;
+  dl     := (s.getsize - kb) DIV 2;
+  nested := nil;
+  line   := '    Total header: ' + wort(kb) + ' Size: ' + wort(dl);
+END;
 
-procedure tschluss.einordnen (var ko:kopfdaten);
-begin
-ko.kopfbytes:=kb;
-case ko.gesdattyp of
-   4,5,16,17:ko.nkan:=ko.bytes;
-   6,7,18,19:ko.nkan:=ko.bytes div 2;
-   else begin tulabfehler:=true; fehler('Datenformat unbekannt') end;
-   end;
-ko.anzahl:=dl div ko.nkan;
-end;
+PROCEDURE tschluss.einordnen(VAR ko : headerdata);
+BEGIN
+  ko.headerbytes := kb;
+  CASE ko.datatype OF
+    4, 5, 16, 17 : ko.channelnumber := ko.bytes;
+    6, 7, 18, 19 : ko.channelnumber := ko.bytes DIV 2;
+    ELSE
+    BEGIN
+      tulabfehler := True;
+      fehler('Datenformat unbekannt');
+    END;
+  END;
+  ko.datalength := dl DIV ko.channelnumber;
+END;
 
 { Initialisierung }
 
-begin
-new(pufferb);
-pufferbyteanfang:=0; pufferbyteende:=0;
-end.
+BEGIN
+  new(pufferb);
+  pufferbyteanfang := 0;
+  pufferbyteende   := 0;
+END.

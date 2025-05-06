@@ -1,0 +1,7 @@
+**/*.dat
+**/*.exe
+**/*.obj
+
+backup/
+lib/
+

@@ -1,13 +1,14 @@
-{Borland-Pascal 7.0 / FPC 2.4 }
+{Borland-Pascal 7.0 / FPC 3.2.2 }
 {$ifdef fpc} {$mode TP} {$endif}
 
 unit  grafik;
 
 {$ifdef msdos} {$G-,O-} {$endif}
 {$ifdef DPMI}  {$C moveable preload permanent} {$endif}
-{$ifdef win32} { $ define dauergrafik} {$define wingraph} {$endif}
 
 {$A+,B-,E+,F-,I-,N+,P+,T+,V-,X-}
+
+{$ifdef fpc} {$define dauergrafik} {$endif}
 
 interface
 
@@ -31,7 +32,7 @@ procedure closegraph;
 
 implementation
 
-uses  {$ifdef wingraph} crt,dos,wingraph; {$else} crt,dos,graph; {$endif}
+uses  crt,dos,graph;
 
 
 {$ifdef msdos}
@@ -47,14 +48,9 @@ procedure herc; external;
 procedure opengraph;
 begin
 {$ifndef dauergrafik}
-{$ifdef wingraph}
-gdriver:=nopalette; gmode:=m800x600;
-initgraph(gdriver,gmode,'Neurolab-Grafik');
-{$else}
 if grtreiber=255 then detectgraph(gdriver,gmode) else gdriver:=grtreiber;
 if grmodus<>255 then gmode:=grmodus;
 initgraph(gdriver,gmode,getenv('BGI'));
-{$endif}
 if gdriver<0 then begin
    writeln('No grafic card or driver missing.');
    halt end;
@@ -64,7 +60,7 @@ end;
 procedure closegraph;
 begin
 {$ifndef dauergrafik}
-{$ifdef wingraph} wingraph.closegraph; {$else} graph.closegraph; {$endif}
+graph.closegraph;
 {$endif}
 end;
 
@@ -75,7 +71,7 @@ if registerbgidriver(@egavga)<0 then begin
 if registerbgidriver(@herc)<0 then begin
    writeln('Hercules-driver lost'); halt end;
 {$else}
-{$ifndef wingraph} vesa16:=installuserdriver('vesa16',nil); {$endif}
+vesa16:=installuserdriver('vesa16',nil);
 {$endif}
 
 {$ifdef dauergrafik}
